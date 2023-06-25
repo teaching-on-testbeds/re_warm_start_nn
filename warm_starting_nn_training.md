@@ -5,6 +5,17 @@ The paper is available on [arXiv](https://arxiv.org/abs/1910.08475). In creating
 :::
 
 ::: {.cell .markdown}
+## Goals
+
+At the end of this notebook, you will:
+
+- learn to identify specific claims, both qualitative and quantitative, in a machine learning research paper
+- learn to identify the specific experiments they would need to run to validate each claim
+- learn to identify the data, code, and hyperparameters needed to run each experiment, and to make appropriate choices when these are not available
+- understand the computational cost associated with reproducing a result, and the effect of missing information on that cost.
+:::
+
+::: {.cell .markdown}
 ## Introduction
 
 Retraining neural networks with new data added to the training set is a time and energy-consuming task. To speed up this process, the technique of warm-starting can be used. Warm-starting involves using the weights of a pre-trained model, trained on a subset of the data, as the starting point for training the complete dataset.
@@ -32,15 +43,67 @@ Updating datasets over time can be a costly endeavor, making it impractical to r
 ::: {.cell .markdown}
 ## Claims by the authors:
 
--   Claim 1: Warm-starting neural network training can reduce the resource usage associated with the construction of performant deep learning systems.
--   Claim 2: Warm-starting neural network training can yield poorer generalization performance than models that have fresh random initializations, even though the final training losses are similar.
--   Claim 3: Warm-starting neural network training can be improved by using a simple trick that involves resetting the batch normalization statistics after copying the weights from a previous model.
--   Claim 4: The simple trick can close the generalization gap between warm-starting and random initialization in several important situations, such as when data arrive piecemeal, when data are actively selected, or when data are noisy or corrupted.
--   Claim 5: The simple trick can also improve the convergence speed and stability of warm-starting, especially when the learning rate is large or the batch size is small.
--   Claim 6: The reason why warm-starting can hurt generalization is that it can cause a mismatch between the batch normalization statistics and the data distribution, which can lead to suboptimal feature representations and gradient directions.
--   Claim 7: The reason why resetting the batch normalization statistics can mitigate this effect is that it can restore the alignment between the batch normalization statistics and the data distribution, which can lead to better feature representations and gradient directions.
+### Claim 1: Warm-starting neural network training can reduce the resource usage and training time associated with the construction of performant deep learning models.
 
-Additional points:
+- Excerpt: "Nevertheless, it is highly desirable to be able to warm-start neural network training, as it would dramatically reduce the resource usage associated with the construction of performant deep learning systems."
+- Type: This claim is qualitative because it compares the resource usage of warm-starting and cold-starting neural network training without giveing difference in percentage of resource usage. 
+- Experiment: A possible way to test this claim is to train the same model with different percentages of the dataset: 50% for warm-starting and 0% for cold-starting. Then, measure how many epochs each model needs to achieve a certain level of training loss or accuracy.
+
+### Claim 2: Warm-starting neural network training can yield poorer generalization performance than models that have fresh random initializations, even though the final training losses are similar.
+![Figure1](assets/claim2.png)
+*This is a comparison of warm-starting model (Blue) and randomly initialized model (Orange) in Figure 1 of the paper*
+
+- Excerpt: "However, in practice this warm-starting seems to yield poorer generalization performance than models that have fresh random initializations, even though the final training losses are similar."
+- Type: This claim is qualitative because it states that the warm-start model has worse generalization performance than the fresh-start model, without giving any numerical evidence or comparison but shows this in several figures in the paper.
+- Experiment: A possible way to evaluate this claim is to use some unseen validation data and compare the performance of the models produced from verifying the first claim using different metrics, such as accuracy, precision, recall, or others. You can also try different model architectures and datasets to test the claim’s robustness.
+
+### Claim 3: Warm-starting neural network training can achieve comparable generalization performance to randomly initialized models by tuning the batch size and learning rates, but without any benifit in training time.
+![Figure2](assets/claim3.png)
+*This is Figure 3 from the paper, warm-starting models (Blue) with randomly initialized models (Orange)*
+
+- Excerpt: "Interestingly, we do find warm-started models that perform as well as randomly-initialized models, but they are unable to do so while benefiting from their warm-started initialization. The training time for warm-started ResNet models that generalize as well as randomly-initialized models is roughly the same as those randomly-initialized models."
+- Type: This claim is qualitative because it specifies that the generalization performance is comparable but not how comparable it is, or how much resources are used.
+- Experiment: You can verify this claim by trying different combinations of batch sizes and learning rates then plot the performance - training time relation for warm-start and cold-start models.
+
+### Claim 4: A little training with a warm-start model can lead to loss of generality.
+![Figure3](assets/claim4.png)
+*This is Figure 4 from the paper, left is validation accuracy in 50% training while right is percentage of damage when training on 100%*
+
+- Excerpt: "One surprising result in our investigation is that only a small amount of training is necessary to damage the validation performance of the warm-started model."
+- Type: This claim is qualitative.
+- Experiment: A possible way to verify this claim is to train the warm-start model on a subset of the data for a few epochs and measure its performance. Then, use the full data and observe how the performance drops.
+
+### Claim 5:  Applying regularization can improve both warm-start and cold-start models, but the gap in performance remains.
+
+- Excerpt: "We apply regularization in both rounds of training, and while it is helpful, regularization does not resolve the generalization gap induced by warm starting."
+- Type: This claim is a qualitative statement that the generalization gap between warm-start and cold-start models cannot be closed by the regularization methods.
+- Experiment: Evaluate the effect of different regularization methods on the generalization gap for warm-start and cold-start models. The authors used weight decay, confidence penalized training and adversarial training as regularization methods.
+
+### Claim 6: The shrink-and-perturb trick can overcome the generalization gap between warm-starting and cold-starting in several important situations.
+![Figure4](assets/claim6.png)
+*This is the new update equation where λ is the shrink factor and p is the perturbation value*
+
+- Excerpt: "We describe a simple trick that overcomes this pathology, and report on experiments that give insights into its behavior in batch online learning and pre-training scenarios."
+- Type: This claim is a qualitative observation that the shrink-perturb mechanism can reduce the generalization gap.
+- Experiment: To test this claim, you can experiment with different values of shrinkage and perturbation on warm-started weights, and measure the performance of the models with and without this trick. You should cover different situations as explained in the paper.
+
+### Claim 7: The shrink-and-perturb trick can reduce the generalization gap by eliminating the average gradient discrepancy between the first and second training.
+![Figure5](assets/claim7.png)
+*This is a visualization of the shrink-and-perturb trick’s effect on the gradient difference from Figure 5 of the original paper*
+
+- Excerpt: "The success of the shrink and perturb trick may lie in its ability to standardize gradients while preserving a model’s learned hypothesis."
+- Type: This is a qualitative claim.
+- Experiment: Testing this claim will be by trying different shrink and perturbation value and check how it affect the average gradients in training.
+
+### Claim 8: The generalization performance of pretrained models can be enhanced by using the shrink-and-perturb trick when the datasets are small or limited.
+![Figure6](assets/claim8.png)
+*This is figure 9 in the original paper, showing how the shrink-and-perturb trick can be used to pretrain on similar datasets*
+
+- Excerpt: "We find that shrink-perturb initialization, however, allows us to avoid having to make such a prediction: shrink-perturbed models perform at least as well as warm-started models when pre-training is the most performant strategy and as well as randomly-initialized models when it is better to learn from scratch."
+- Type: This claim is qualitative.
+- Experiment: Testing this claim will be by using shrink-and-perturb trick to transfer learn models pretrained on different datasets.
+
+__To summarize the previous claims:__
 
 -   Training a model initialized with the weights trained on a part of the same dataset leads to loss of generality in the deep neural network, identified as the warm-starting gap. A model trained on 100% of the data at once takes more time to train but yields better results.
 -   The warm-starting gap is independent of batch size and learning rate.
@@ -49,16 +112,6 @@ Additional points:
 -   Shrinking the weights doesn't significantly affect models without bias or batch normalization, but extreme shrinking can impact the performance of more sophisticated architectures.
 -   Adding perturbation (noise) after shrinking improves both training time and generalization performance.
 -   Utilizing the shrink-perturb trick can close the generalization gap and provide similar results to a newly randomly initialized model in less training time.
-:::
-
-::: {.cell .markdown}
-### Conducting Experiments to Test Previous Claims
-
-In this notebook, we will perform experiments to validate the claims mentioned earlier. Please note that some parts of the experiments will be incomplete, requiring you to fill in the missing functions with the correct parameter values as mentioned in the paper.
-
-For the values that are not explicitly provided by the authors, you can try different values to assess the sensitivity of the hyperparameters used.
-
-The missing code for the experiments can be found in the `solution.ipynb` notebook.
 :::
 
 ::: {.cell .markdown}

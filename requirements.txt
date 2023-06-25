@@ -1,0 +1,8 @@
+tensorboard
+tensorboardX
+torch
+torchvision
+numpy
+scipy
+tensorflow
+matplotlib
