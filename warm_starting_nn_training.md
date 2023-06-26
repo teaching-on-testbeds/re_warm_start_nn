@@ -57,46 +57,61 @@ Updating datasets over time can be a costly endeavor, making it impractical to r
 - Type: This claim is qualitative because it states that the warm-start model has worse generalization performance than the fresh-start model, without giving any numerical evidence or comparison but shows this in several figures in the paper.
 - Experiment: A possible way to evaluate this claim is to use some unseen validation data and compare the performance of the models produced from verifying the first claim using different metrics, such as accuracy, precision, recall, or others. You can also try different model architectures and datasets to test the claim’s robustness.
 
-### Claim 3: Warm-starting neural network training can achieve comparable generalization performance to randomly initialized models by tuning the batch size and learning rates, but without any benifit in training time.
-![Figure2](assets/claim3.png)
+### Claim 3: Compared to the random initialized models, the warm-started models achieved lower test accuracies on three datasets: CIFAR-10, SVHN, and CIFAR-100. The accuracy drops for ResNet-SGD, ResNet-Adam, MLP-SGD, and MLP-Adam were 4.5%, 3.6%, 1.6%, and 3.3% on CIFAR-10; 1.9%, 0.1%, 1.1%, and 7.3% on SVHN; and 2.7%, 6.4%, 0.9%, and 1.7% on CIFAR-100 respectively.
+![Figure2](assets/claim3.png)\
+
+- Excerpt: "Our results (Table 1) indicate that generalization performance is damaged consistently and significantly for both ResNets and MLPs. This effect is more dramatic for CIFAR-10, which is considered relatively challenging to model (requiring, e.g., data augmentation), than for SVHN, which is considered easier."
+- Type: This is a quantitative claim, as it uses numerical values to compare the performance of different models on different datasets.
+- Experiment: To verify this claim, you will need to follow the authors’ details and train the models mentioned. Then, you will need to compare their test accuracies. However, some of the accuracy differences are very small, especially for the SVHN dataset. Therefore, reproducing these results may be difficult without the authors’ hyperparameters.
+
+### Claim 4: The accuracies of random initialized and warm-started LR-SGD and LR-Adam were similar on different datasets as the accuracy differences between them were 0.9% and 0.5% on CIFAR-10; 0.0% and 0.2% on SVHN; and 0.6% and 0.3% on CIFAR-100 respectively.
+![Figure3](assets/claim4.png)\
+
+- Excerpt: "Logistic regression, which enjoys a convex loss surface, is not significantly damaged by warm starting for any datasets."
+- Type: This is a quantitative claim, as it uses numerical values to show that the accuracies of warm-started and cold-started logistic regression models are very similar.
+- Experiment: You can verify this by training the models mentioned and compare their test accuracies.
+
+### Claim 5: Warm-starting neural network training can achieve comparable generalization performance to randomly initialized models by tuning the batch size and learning rates, but without any benifit in training time.
+![Figure4](assets/claim5.png)
 *This is Figure 3 from the paper, warm-starting models (Blue) with randomly initialized models (Orange)*
 
 - Excerpt: "Interestingly, we do find warm-started models that perform as well as randomly-initialized models, but they are unable to do so while benefiting from their warm-started initialization. The training time for warm-started ResNet models that generalize as well as randomly-initialized models is roughly the same as those randomly-initialized models."
 - Type: This claim is qualitative because it specifies that the generalization performance is comparable but not how comparable it is, or how much resources are used.
 - Experiment: You can verify this claim by trying different combinations of batch sizes and learning rates then plot the performance - training time relation for warm-start and cold-start models.
 
-### Claim 4: A little training with a warm-start model can lead to loss of generality.
-![Figure3](assets/claim4.png)
+### Claim 6: A little training with a warm-start model can lead to loss of generality.
+![Figure5](assets/claim6.png)
 *This is Figure 4 from the paper, left is validation accuracy in 50% training while right is percentage of damage when training on 100%*
 
 - Excerpt: "One surprising result in our investigation is that only a small amount of training is necessary to damage the validation performance of the warm-started model."
 - Type: This claim is qualitative.
 - Experiment: A possible way to verify this claim is to train the warm-start model on a subset of the data for a few epochs and measure its performance. Then, use the full data and observe how the performance drops.
 
-### Claim 5:  Applying regularization can improve both warm-start and cold-start models, but the gap in performance remains.
+### Claim 7:  For the regularization values of 0.1, 0.001, 0.0001, and 0.00001 respectively, the performance gap remained even after applying regularization. The gap for L2 regularization was 8.8, 4.2, 4.1, and 4.7; for adversarial training, it was 2.4, 2.5, 2.6, and 5.4; and for confidence-penalized training, it was 2.8, 5.8, 4.2, and 6.6.
+![Figure6](assets/claim7.png)\
 
 - Excerpt: "We apply regularization in both rounds of training, and while it is helpful, regularization does not resolve the generalization gap induced by warm starting."
-- Type: This claim is a qualitative statement that the generalization gap between warm-start and cold-start models cannot be closed by the regularization methods.
+- Type: This claim is a quantitative as it compares the test accuracies of warm-start and cold-start models after using different regularization methods.
 - Experiment: Evaluate the effect of different regularization methods on the generalization gap for warm-start and cold-start models. The authors used weight decay, confidence penalized training and adversarial training as regularization methods.
 
-### Claim 6: The shrink-and-perturb trick can overcome the generalization gap between warm-starting and cold-starting in several important situations.
-![Figure4](assets/claim6.png)
+### Claim 8: The shrink-and-perturb trick can overcome the generalization gap between warm-starting and cold-starting in several important situations.
+![Figure7](assets/claim8.png)
 *This is the new update equation where λ is the shrink factor and p is the perturbation value*
 
 - Excerpt: "We describe a simple trick that overcomes this pathology, and report on experiments that give insights into its behavior in batch online learning and pre-training scenarios."
 - Type: This claim is a qualitative observation that the shrink-perturb mechanism can reduce the generalization gap.
 - Experiment: To test this claim, you can experiment with different values of shrinkage and perturbation on warm-started weights, and measure the performance of the models with and without this trick. You should cover different situations as explained in the paper.
 
-### Claim 7: The shrink-and-perturb trick can reduce the generalization gap by eliminating the average gradient discrepancy between the first and second training.
-![Figure5](assets/claim7.png)
+### Claim 9: The shrink-and-perturb trick can reduce the generalization gap by eliminating the average gradient discrepancy between the first and second training.
+![Figure8](assets/claim9.png)
 *This is a visualization of the shrink-and-perturb trick’s effect on the gradient difference from Figure 5 of the original paper*
 
 - Excerpt: "The success of the shrink and perturb trick may lie in its ability to standardize gradients while preserving a model’s learned hypothesis."
 - Type: This is a qualitative claim.
 - Experiment: Testing this claim will be by trying different shrink and perturbation value and check how it affect the average gradients in training.
 
-### Claim 8: The generalization performance of pretrained models can be enhanced by using the shrink-and-perturb trick when the datasets are small or limited.
-![Figure6](assets/claim8.png)
+### Claim 10: The generalization performance of pretrained models can be enhanced by using the shrink-and-perturb trick when the datasets are small or limited.
+![Figure9](assets/claim10.png)
 *This is figure 9 in the original paper, showing how the shrink-and-perturb trick can be used to pretrain on similar datasets*
 
 - Excerpt: "We find that shrink-perturb initialization, however, allows us to avoid having to make such a prediction: shrink-perturbed models perform at least as well as warm-started models when pre-training is the most performant strategy and as well as randomly-initialized models when it is better to learn from scratch."
