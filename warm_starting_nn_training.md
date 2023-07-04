@@ -16,18 +16,6 @@ At the end of this notebook, you will:
 :::
 
 ::: {.cell .markdown}
-## Introduction
-
-Retraining neural networks with new data added to the training set is a time and energy-consuming task. To speed up this process, the technique of warm-starting can be used. Warm-starting involves using the weights of a pre-trained model, trained on a subset of the data, as the starting point for training the complete dataset.
-
-The paper examines the impact of warm-starting on the final model's accuracy and highlights the presence of a generalization gap in warm-started models. The authors propose a method to address this gap by shrinking the pre-trained weights and introducing a random perturbation.
-
-The warm-starting technique is an effective way to accelerate the training process of large neural network models. However, the paper emphasizes the importance of mitigating the generalization gap in warm-started models, and proposes a method to achieve better accuracy.
-
-Updating datasets over time can be a costly endeavor, making it impractical to retrain models from scratch each time. Therefore, warm-starting becomes crucial as it allows leveraging pre-trained weights on a subset of the data, significantly reducing the time and resources required for training. By utilizing warm-starting, models can be efficiently adapted to incorporate new data without incurring the high computational expenses associated with starting from scratch.
-:::
-
-::: {.cell .markdown}
 ### While experimenting we need to answer some questions to understand the level of reproducibility of this paper:
 
 -   Is there code available for training? for inference?
@@ -41,15 +29,16 @@ Updating datasets over time can be a costly endeavor, making it impractical to r
 :::
 
 ::: {.cell .markdown}
-## Claims by the authors:
-The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to conduct the right experiment.
+## Introduction
 
-***
+Warm starting and cold starting are two different ways of initializing the weights of a neural network before training. <b>Cold starting</b> means starting with random weights, while <b>warm starting</b> means starting with weights copied from a previously trained model. In our context the model is previously trained on a subset of the same dataset.
+
+Updating datasets over time can be a costly endeavor, making it impractical to retrain models from scratch each time. Therefore, warm-starting becomes crucial as it allows leveraging pre-trained weights on a subset of the data, significantly reducing the time and resources required for training. By utilizing warm-starting, models can be efficiently adapted to incorporate new data without incurring the high computational expenses associated with starting from scratch.
 :::
 
 ::: {.cell .markdown}
-
-<p style="color: darkblue; font-size: 16px;"> Warm starting and cold starting are two different ways of initializing the weights of a neural network before training. <b>Cold starting</b> means starting with random weights, while <b>warm starting</b> means starting with weights copied from a previously trained model. In our context the model is previously trained on a subset of the same dataset.</p>
+## Primary Claims:
+The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to conduct the right experiment.
 
 ***
 :::
@@ -106,42 +95,6 @@ The original paper makes several claims that can be classified as either quantit
 :::
 
 ::: {.cell .markdown}
-<p style="color: darkblue; font-size: 16px;"> The authors reported that ResNet and MLP, which had non-convex loss surfaces, suffered from warm-starting. However, logistic regression, which had a convex loss surface, did not. This is because a convex loss surface has only one local minimum which is the global minimum, while a non-convex loss surface has many local minima.</p>
-
-***
-:::
-
-::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> Can we apply warm-starting to train an SVM model without compromising its generalization performance, given that it has a convex loss surface? Describe how the shape of the loss surface influences your answer.</p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
-
-***
-:::
-
-::: {.cell .markdown}
-### Claim 3: Warm-starting does not affect the generalization performance of Logistic Regression.
-[comment2]: <> (![Figure3](assets/claim4.png))
-
-| CIFAR-10    |   LR-SGD   |   LR-Adam   | CIFAR-100   |   LR-SGD   |   LR-Adam   |    SVHN     |   LR-SGD   |   LR-Adam   |
-| :---------: | :--------: | :---------: | :---------: | :--------: | :---------: | :---------: | :--------: | :---------: |
-| Random init |   40.5     |    33.8     |             |    16.9    |    10.2     |             |   28.0     |     22.4    |
-| Warm-Start  |   39.6     |    33.3     |             |    16.3    |     9.9     |             |   28.0     |     22.2    |
-| Difference  |   0.9      |    0.5      |             |     0.6    |     0.3     |             |     0      |     0.2     |
-
-- Excerpt: 
-
-> "Logistic regression, which enjoys a convex loss surface, is not significantly damaged by warm starting for any datasets."
-
-- Type: This is a quantitative claim, as it uses numerical values to show that the accuracies of warm-started and cold-started logistic regression models are very similar.
-- Experiment: To verify this, train two logistic regression models, one warm-started and one randomly initialized, and compare their test accuracies.
-
-***
-:::
-
-::: {.cell .markdown}
 <p style="color: darkblue; font-size: 16px;"> In most cases it is a reasonable strategy to warm-start the model and potentially achieve quicker convergence. As it would be inefficient to discard the old model that has already learned something.</p>
 
 ***
@@ -158,7 +111,7 @@ The original paper makes several claims that can be classified as either quantit
 :::
 
 ::: {.cell .markdown}
-### Claim 4: Warm-starting neural networks saves resources and time, but lowers accuracy by 10% compared to fresh models.
+### Claim 3: Warm-starting neural networks saves resources and time, but lowers accuracy by 10% compared to fresh models.
 ![Figure1](assets/claim2.png)\
 *The data is divided into 1000-sample batches for online training. The warm-started (Blue) and randomly initialized (Orange) models train until 99% training accuracy. The plots show how training time and test accuracy vary with the number of samples.*
 
@@ -186,261 +139,377 @@ The original paper makes several claims that can be classified as either quantit
 ***
 :::
 
-
-[comment3]: <> (The previous could made with their experiments in a seperate notebook!)
-
-::: {.cell .markdown}
-<p style="color: darkblue; font-size: 16px;"> The authors conducted a series of experiments to test the effect of warm-starting on different aspects of the model training. They changed the values of the learning rates and batch sizes, which control the speed and stability of the optimization process. They also varied the number of epochs, which determine how long the warm-started model is trained for. Finally, they applied different regularization techniques, which aim to prevent overfitting and improve generalization. They compared the results of these experiments with the baseline cold-starting method. </p>
-
-***
-:::
-
-::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> How do you assess the potential of hyperparameter search or different regularization techniques to reduce the generalization gap? Provide a brief justification for your answer. </p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
-
-***
-:::
-
-::: {.cell .markdown}
-### Claim #: Warm-starting neural network training can achieve comparable generalization performance to randomly initialized models by tuning the batch size and learning rates, but without any benifit in training time.
-![Figure4](assets/claim5.png)
-*This is Figure 3 from the paper, each dot represent a ResNet model validation accuracy on CIFAR-10 dataset, where warm-starting models are blue and randomly initialized models are orange. Each dot corresponds to a model with a different combination of learning rate and batch size.*
-
-- Excerpt: 
-
-> "Interestingly, we do find warm-started models that perform as well as randomly-initialized models, but they are unable to do so while benefiting from their warm-started initialization. The training time for warm-started ResNet models that generalize as well as randomly-initialized models is roughly the same as those randomly-initialized models."
-
-- Type: This claim is qualitative because it specifies that the generalization performance is comparable but not how comparable it is, or which values acheive these results.
-- Experiment: You can verify this claim by trying different combinations of batch sizes and learning rates then plot the performance - training time relation for warm-start and cold-start models.
-
-***
-:::
-
-::: {.cell .markdown}
-### Claim #: A little training with a warm-start model can lead to loss of generality.
-![Figure5](assets/claim6.png)
-*This is Figure 4 from the paper, showing the validation accuracy (left) on 50% of data and the percent damage (right) of warm-starting ResNet models on 100% of the data. The warm-starting models are trained on 50% of the data and checkpointed every 5 epochs. The percent damage is the difference in validation accuracy between the warm-starting models and the baseline model that is randomly initialized and trained on 100% of the data.*
-
-- Excerpt: 
-
-> "One surprising result in our investigation is that only a small amount of training is necessary to damage the validation performance of the warm-started model."
-
-- Type: This claim is qualitative as it lacks the details of the ranges or factors that affect the generality.
-- Experiment: A possible way to verify this claim is to train the warm-start model on a subset of the data for a few epochs and measure its performance. Then, use the full data and observe how the performance drops.
-
-***
-:::
-
-::: {.cell .markdown}
-### Claim #: For the regularization values of 0.1, 0.001, 0.0001, and 0.00001 respectively, the performance gap remained even after applying regularization. The gap for L2 regularization was 8.8, 4.2, 4.1, and 4.7; for adversarial training, it was 2.4, 2.5, 2.6, and 5.4; and for confidence-penalized training, it was 2.8, 5.8, 4.2, and 6.6.
-![Figure6](assets/claim7.png)\
-
-- Excerpt: 
-
-> "We apply regularization in both rounds of training, and while it is helpful, regularization does not resolve the generalization gap induced by warm starting."
-
-- Type: This claim is a quantitative as it compares the test accuracies of warm-start and cold-start models after using different regularization methods.
-- Experiment: Evaluate the effect of different regularization methods on the generalization gap for warm-start and cold-start models. The authors used weight decay, confidence penalized training and adversarial training as regularization methods.
-
-***
-:::
-
-[comment3]: <> (The previous could made with their experiments in a seperate notebook!)
-
-::: {.cell .markdown}
-<p style="color: darkblue; font-size: 16px;"> The authors proposed a method, which they named the shrink-perturb method. In this technique, the weight is reduced by a factor of `λ` and then perturbed by some noise `p` in the new weight update. The weights are initialized before each training round using this equation: <b> W<sub>t</sub> = λW<sub>t-1</sub> + p<sub>t</sub></b></p>
-
-***
-:::
-
-::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> Do you think this method should lead to better or worse results?</p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
-
-***
-:::
-
-::: {.cell .markdown}
-### Claim #: The shrink-and-perturb trick can overcome the generalization gap between warm-starting and cold-starting in several important situations.
-![Figure7](assets/claim8.png)\
-*This is Figure 7 from the paper where author compare the model performance with different shrink factors in an online learning experiment with the same setting as in claim 4*
-
-- Excerpt: 
-
-> "We describe a simple trick that overcomes this pathology, and report on experiments that give insights into its behavior in batch online learning and pre-training scenarios."
-
-- Type: This claim is a qualitative as it describes a new mechanism to solve the warm-starting generalization gap.
-- Experiment: To test this claim, you can experiment with different values of shrinkage and perturbation on warm-starting weights, and measure the performance of the models with and without this trick. You should cover different situations as explained in the paper.
-
-***
-:::
-
-
-::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> What do you think is the reason for the loss of generality when warm starting the model?</p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
-
-***
-:::
-
-::: {.cell .markdown}
-<p style="color: darkblue; font-size: 16px;"> When a model is warm-started, it faces a challenge of learning from new data that it has not encountered before, while preserving the knowledge it has acquired from the previous data. The new data tends to produce much larger gradients than the old data leading to gradient imbalance, which can disrupt the optimization. The authors proposed a simple technique of shrinking the model’s weights towards zero, which increases the loss and the gradient magnitude for both old and new data, making them more balanced and easier to optimize.</p>
-
-***
-:::
-
-::: {.cell .markdown}
-### Claim #: The shrink-and-perturb trick can reduce the generalization gap by eliminating the average gradient discrepancy between the first and second training.
-![Figure8](assets/claim9.png)
-*This is Figure 5 of the original paper, it shows gradient norms for warm-starting models with and without the shrink-pertrub trick. The old models are trained ResNet models on 50% of CIFAR-10 dataset and the new models are trained on the remainder of the dataset.*
-
-- Excerpt:
-
-> "The success of the shrink and perturb trick may lie in its ability to standardize gradients while preserving a model’s learned hypothesis."
-
-- Type: This is a qualitative claim.
-- Experiment: Testing this claim will be by trying different shrink and perturbation value and check how it affect the average gradients in training.
-
-***
-:::
-
-[comment4]: <> (The next claim is not needed!)
-
-::: {.cell .markdown}
-### Claim #: The generalization performance of pretrained models can be enhanced by using the shrink-and-perturb trick when the datasets are small or limited.
-![Figure9](assets/claim10.png)
-*This is figure 9 in the original paper, showing how the shrink-and-perturb trick can be used to pretrain on similar datasets*
-
-- Excerpt: 
-
-> "We find that shrink-perturb initialization, however, allows us to avoid having to make such a prediction: shrink-perturbed models perform at least as well as warm-started models when pre-training is the most performant strategy and as well as randomly-initialized models when it is better to learn from scratch."
-
-- Type: This claim is qualitative.
-- Experiment: Testing this claim will be by using shrink-and-perturb trick to transfer learn models pretrained on different datasets.
-
-***
-:::
-
-::: {.cell .markdown}
-__To summarize the previous claims:__
-
--   Training a model initialized with the weights trained on a part of the same dataset leads to loss of generality in the deep neural network, identified as the warm-starting gap. A model trained on 100% of the data at once takes more time to train but yields better results.
--   The warm-starting gap is independent of batch size and learning rate.
--   Only a little training with a warm-starting model can lead to a loss of generality.
--   Regularization doesn't resolve the generalization gap.
--   Shrinking the weights doesn't significantly affect models without bias or batch normalization, but extreme shrinking can impact the performance of more sophisticated architectures.
--   Adding perturbation (noise) after shrinking improves both training time and generalization performance.
--   Utilizing the shrink-perturb trick can close the generalization gap and provide similar results to a newly randomly initialized model in less training time.
-:::
-
-::: {.cell .markdown}
-## Functions
-
-The following part contains data loaders, models, and training functions that will be used. Please note that you are not required to implement any of these functions, but rather read the notes on how to use them and understand their purpose.
-:::
-
-::: {.cell .markdown}
-### Data Loaders
-
-The paper utilizes publicly available datasets, including CIFAR10, CIFAR100, and SVHN. We will create data loaders that match the specifications of the data used in the paper.
-:::
-
-::: {.cell .code}
-``` python
-## The next few cell should contain the code with explaination on how to use the dataloaders. 
-## The only functions the students will need to run are the training functions at the end however I will be adding
-## explaination to everything.
-```
-:::
-
-::: {.cell .markdown}
-### Models:
-
-The model used in the paper are Logistic Regression, 3-Layer Resnet-18 and Multi-layer perceptron.
-:::
-
-::: {.cell .code}
-``` python
-## The next few cells will contain the model implementations as function to be called in the training. 
-## Explaination on the architecture and maybe some references will be added just in case anyone is curious to 
-## understand the model architecture.
-```
-:::
-
-::: {.cell .markdown}
-### Training:
-
-The training function will be added in this section, there are different training functions for different experiments.
-
-I will add explaination on to use these fucntions and give some examples as the students will have to use these functions.
-:::
-
-::: {.cell .code}
-``` python
-## The next few cells will contain the function with detailed explaination on how to use them
-```
-:::
-
 ::: {.cell .markdown}
 ## Experiments
 
-In this section, we will utilize the previously defined functions to test the claims made by the authors. You will come across sections in the code marked with `#TODO`, where you need to add one or two functions.
+In this section, we will test the claims made by the authors. You will come across sections in the code marked with `#TODO`, where you need to fill an argument as described in the experiment description.
 
-Please use the hyperparameter values provided in the paper. If certain hyperparameters are not provided, feel free to use your own values.
+***
 :::
 
 ::: {.cell .markdown}
-### Experiment n: Testing Claim m
+### Experiment 1:
+In this experiment we want to compare two ways of training a ResNet-18 model, which is a type of deep neural network that can classify images. The CIFAR-10 dataset is a collection of 60,000 color images of 10 classes, such as airplanes, cars, and dogs. The experiment splits the dataset into two parts: a training set and a test set. The training set is used to update the model weights, and the test set is used to evaluate the model performance.
 
-In this experiment, we aim to validate the m'th claim mentioned in the paper. The authors have provided a specific section and a corresponding figure to support their claim.
+The experiment uses two models: a warm-starting model and a randomly initialized model. The warm-starting model starts with some pre-trained weights that are learned training on 50% of the training data for 350 epochs. The randomly initialized model starts with random weights that are not learned from any data. Both models train on the full training data for 350 epochs, where one epoch means one pass over the entire data. The experiment will measure the accuracy of the models on both the training and test sets, which is the percentage of correctly classified images.
 
-Our objective is to reproduce the figure and then compare it with the original one.
+To run this experiment we will need to:
 
-To accomplish this, we need to identify the hyperparameter values required for this experiment and include them in the training function.
-
-Hint:
-
--   Utilize the `train1` function for this particular experiment.
--   Run the `plot_fig#` function in the subsequent cell.
-
-(I will add assertions to ensure the proper utilization of resources and to detect any potential issues in the process.)
+1. Create `get_cifar10_loaders` function to load the CIFAR-10 dataset and split it into training and test sets.
+2. Define a function that takes a model, a data loader, an optimizer, and a loss function, and trains the model for a given number of epochs, saving the model weights after each epoch.
+3. Create a ResNet-18 model and train it for 350 epochs on 50% of the training data, using stochastic gradient descent as the optimizer and cross entropy loss as the loss function. Save the final model weights as `half_cifar.pt`.
+4. Create another ResNet-18 model and load the weights from `half_cifar.pt`. Train this model for another 350 epochs on the full training data, using the same optimizer and loss function. Save the final model weights as `warm_start_full.pt`.
+5. Create a third ResNet-18 model with random weights. Train this model for 350 epochs on the full training data, using the same optimizer and loss function. Save the final model weights as `random_full.pt`.
+6. Evaluate the test accuracy of all three models using the test data loader. Plot the accuracy curves of the models over time. Compare the results with those reported in the paper and analyze the differences.
 :::
 
 ::: {.cell .code}
 ``` python
-## Example on the student should write
-# TODO
-params = get_params(the hyperparameter values he chooses)
-returned_values_if_any = train(params)
-# End
+import os
+import glob
+import json
+import torch
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+from torch.utils.data import random_split, ConcatDataset
+from torchvision import transforms, datasets, models
+```
+:::
+
+::: {.cell .markdown}
+***
+
+The following function is `get_cifar10_loaders` that loads the CIFAR-10 dataset, which consists of 60,000 color images of 10 classes, and returns data loaders for training and testing. The function takes four parameters:
+
+- `use_half_train`: a boolean flag that indicates whether to use only half of the training data or the whole dataset. If this is set to `True`, then the parameter `dataset_portion` is automatically set to 0.5.
+- `batch_size`: an integer that specifies the number of images to process in each batch. A larger batch size may speed up the training but also require more memory.
+- `dataset_portion`: a double value between 0 and 1 that indicates the portion of the training data to use. For example, if this is set to 0.8, then only 80% of the training data will be used and the rest will be discarded. This parameter is useful for experimenting with different amounts of data or for creating validation splits.
+- `drop_last`: a boolean flag that indicates whether to drop the last incomplete batch or not. If this is set to `True`, then the last batch that has less than `batch_size` images will be ignored. This parameter may affect the accuracy of the model depending on how many images are left out.
+
+The function returns a dictionary with two keys: `train_loader` and `test_loader` which can be used to iterate over the training and testing data respectively. The function also downloads the CIFAR-10 dataset from torchvision datasets if it is not already present in the specified directory.
+:::
+
+::: {.cell .code}
+``` python
+def get_cifar10_loaders(use_half_train=False, batch_size=128, dataset_portion=None, drop_last=False):
+    """
+    This loads the whole CIFAR-10 into memory and returns train and test data according to params
+    @param use_half_train (bool): return half the data or the whole train data
+    @param batch_size (int): batch size for training and testing
+    @param dataset_portion (double): portion of train data
+    @param drop_last (bool): flag to drop last incomplete batch
+
+    @returns dict() with train and test data loaders with keys `train_loader`, `test_loader`
+    """
+    
+    # Normalization using channel means
+    normalize_transform = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+
+    # Creating transform function
+    train_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+        
+    # Test transformation function    
+    test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+    
+    # loading data from torchvision datasets
+    original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                              train=True, transform=train_transform, download=True)
+    original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                             train=False, transform=test_transform, download=True)
+    
+    # Check half data flag
+    if use_half_train:
+        dataset_portion = 0.5
+        
+    # Check if only a portion is required
+    if dataset_portion:
+        dataset_size = len(original_train_dataset)
+        split = int(np.floor((1 - dataset_portion) * dataset_size))
+        original_train_dataset, _ = random_split(original_train_dataset, [dataset_size - split, split])
+    
+    # Creating data loaders
+    loader_args = {
+        "batch_size": batch_size,
+    }
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset=original_train_dataset,
+        shuffle=True,
+        drop_last=drop_last,
+        **loader_args)
+
+    test_loader = torch.utils.data.DataLoader(
+        dataset=original_test_dataset,
+        shuffle=False,
+        **loader_args)
+
+    return {"train_loader": train_loader,
+            "test_loader": test_loader}
+```
+:::
+
+::: {.cell .markdown}
+*** 
+
+The following function is the `exp1` which trains a ResNet-18 model on the CIFAR-10 dataset and returns the train and test accuracies. The function takes six parameters:
+
+- `title`: a string that specifies the name of the experiment. This is used to create a subdirectory under the `experiments/exp1` directory where the model checkpoints and final weights will be saved.
+- `experiment_dir`: a string that specifies the path of the experiment directory. If this is `None`, then the function will use the title parameter to create a default directory name.
+- `half`: a boolean flag that indicates whether to use half of the training data or the whole dataset. This is passed to the `get_cifar10_loaders` function that loads the data loaders.
+- `lr`: a float value that specifies the learning rate for the stochastic gradient descent optimizer.
+- `checkpoint`: a string that specifies the path of a model checkpoint file. If this is not `None`, then the function will load the model weights from the checkpoint file and resume training from there.
+- `epochs`: an integer that specifies the number of epochs to train the model for.
+
+The function returns a tuple of two lists: `train_acc` and `test_acc`. These are lists that contain the train and test accuracies for each epoch, respectively. The function uses the [ResNet18](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html) model from the torchvision models. The function also sets the random seeds for reproducibility. The function uses cross entropy loss as the loss function and SGD as an optimizer. The function also uses a helper function called get_accuracy to compute the accuracy of the model predictions.
+:::
+
+::: {.cell .code}
+``` python
+# Function takes predictions and true values to return accuracies
+def get_accuracy(logit, true_y):
+    pred_y = torch.argmax(logit, dim=1)
+    return (pred_y == true_y).float().mean()
+
+# Function to train the model and return train and test accuracies
+def exp1(title='', experiment_dir=None, half = False, lr = 0.001, checkpoint = None, epochs = 10):
+    # Create experiment directory name if none
+    if experiment_dir is None:
+        experiment_dir = os.path.join('experiments/exp1', title)
+
+    # make experiment directory
+    os.makedirs(experiment_dir, exist_ok=True)
+
+    # Set the seed
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    # Check if GPU is available
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0')
+        print("CUDA Recognized")
+    else:
+        device = torch.device('cpu')
+
+    # Get the dataset
+    loaders = get_cifar10_loaders(use_half_train=half)
+    num_classes = loaders.get('num_classes', 10)
+
+    # Get the model
+    model = models.resnet18(num_classes=10).to(device)
+
+    # Create the optimizer
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+
+    # Create the loss function
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # Get model from checkpoint
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint, map_location=device)['model'])
+
+    # Arrays to hold accuracies
+    test_acc = [0]
+    train_acc = [0]
+
+    # Train the model
+    for epoch in range(1, epochs + 1):
+        model.train()
+        print(f"Epoch {epoch}")
+        accuracies = []
+        losses = []
+
+        for batch_idx, (data_x, data_y) in enumerate(loaders["train_loader"]):
+            data_x = data_x.to(device)
+            data_y = data_y.to(device)
+
+            optimizer.zero_grad()
+            model_y = model(data_x)
+            loss = criterion(model_y, data_y)
+            batch_accuracy = get_accuracy(model_y, data_y)
+            loss.backward()
+            optimizer.step()
+
+            accuracies.append(batch_accuracy.item())
+            losses.append(loss.item())
+
+
+        train_loss = np.mean(losses)
+        train_accuracy = np.mean(accuracies)
+        train_acc.append(train_accuracy*100)
+
+        print("Train accuracy: {} Train loss: {}".format(train_accuracy, train_loss))
+
+        accuracies = []
+        losses = []
+        model.eval()
+        for batch_idx, (data_x, data_y) in enumerate(loaders["test_loader"]):
+            data_x = data_x.to(device)
+            data_y = data_y.to(device)
+
+            model_y = model(data_x)
+            loss = criterion(model_y, data_y)
+            batch_accuracy = get_accuracy(model_y, data_y)
+
+            accuracies.append(batch_accuracy.item())
+            losses.append(loss.item())
+
+        test_loss = np.mean(losses)
+        test_accuracy = np.mean(accuracies)
+        test_acc.append(test_accuracy*100)
+        print("Test accuracy: {} Test loss: {}".format(test_accuracy, test_loss))
+
+
+    torch.save({
+        'model': model.state_dict()
+    }, os.path.join(experiment_dir, 'final.pt'))
+    
+    # return the accuracies
+    return train_acc, test_acc
+```
+:::
+
+::: {.cell .markdown}
+***
+
+You should fill the following cell with values that will be used for running the experiment. You can refer to the experiment description above to choose the correct values.
+
+:::
+
+::: {.cell .code}
+``` python
+# TODO: put the correct values for the following parameters
+
+# Set the number of epochs for all experiments
+num_epochs = 
+
+# Train on half of the CIFAR-10 dataset
+half_cifar_title =          # You can choose any title
+use_half_data = 
+half_cifar_lr = 
+half_cifar_checkpoint = 
+
+# Train a warm-started model on the full dataset
+warm_start_title = 
+use_half_data2 = 
+warm_start_lr = 
+warm_start_checkpoint = 
+
+# Train a randomly initialized model on the full dataset
+full_cifar_title = 
+use_half_data3 = 
+full_cifar_lr = 
+full_cifar_checkpoint =  
 ```
 :::
 
 ::: {.cell .code}
 ``` python
-plot_fig#()
+# Solution
+
+# Set the number of epochs for all experiments
+num_epochs = 350
+
+# Train on half of the CIFAR-10 dataset
+half_cifar_title = "half_cifar"  
+use_half_data = True
+half_cifar_lr = 0.001
+half_cifar_checkpoint = None
+
+# Train a warm-started model on the full dataset
+warm_start_title = "warm_start"
+use_half_data2 = False
+warm_start_lr = 0.001
+warm_start_checkpoint = 'experiments/exp1/{}/final.pt'.format(half_cifar_title);
+
+# Train a randomly initialized model on the full dataset
+full_cifar_title = "full_cifar"
+use_half_data3 = False
+full_cifar_lr = 0.001
+full_cifar_checkpoint = None 
 ```
 :::
 
 ::: {.cell .markdown}
-After the figure I will the figure that I got when doing this myself so they can make sure the one they got is right.
-I will also add some notes about the results, whether they match or not and so.
+***
 
-#### The previous is repeated for all claims
+The following cell trains the three required models. This cell can take some time to run!
+:::
+
+::: {.cell .code}
+``` python
+# Run the exp1 function to get train and test accuracies for each model
+half_cifar_train_acc, half_cifar_test_acc = exp1(title=half_cifar_title, half=use_half_data, lr=half_cifar_lr, checkpoint=half_cifar_checkpoint, epochs=num_epochs)
+warm_start_train_acc, warm_start_test_acc = exp1(title=warm_start_title, half=use_half_data2, lr=warm_start_lr, checkpoint=warm_start_checkpoint, epochs=num_epochs)
+full_cifar_train_acc, full_cifar_test_acc = exp1(title=full_cifar_title, half=use_half_data3, lr=full_cifar_lr, checkpoint=full_cifar_checkpoint, epochs=num_epochs)
+```
 :::
 
 ::: {.cell .markdown}
-## Conclusion
+***
+
+Now we save the training and test accuracies in a dictionary and save it in `runs.json`.
+:::
+
+::: {.cell .code}
+``` python
+# Save all results in a dictionary
+runs = {
+    half_cifar_title : [half_cifar_train_acc, half_cifar_test_acc, 0],
+    warm_start_title : [warm_start_train_acc, warm_start_test_acc, 1],
+    full_cifar_title : [full_cifar_train_acc, full_cifar_test_acc, 1]
+}
+
+# Save the outputs in a json file
+with open("experiments/exp1/runs.json", "w") as f:
+    json.dump(runs, f)
+```
+:::
+
+::: {.cell .markdown}
+***
+
+Let’s visualize the accuracies and analyze the outcomes! Run the next cell to plot the accuracies.
+:::
+
+::: {.cell .code}
+``` python
+# Read from json file
+with open("experiments/exp1/runs.json", "r") as f:
+    runs = json.load(f)
+
+plt.figure()
+for title, vals in runs.items():
+    offset = epochs * vals[2]
+    x = np.arange(offset, offset + len(vals[0]))
+    y = vals[0]
+    plt.plot(x, y, label=title)
+plt.legend()
+
+plt.ylabel(" Train accuracy ")
+plt.ylim(0, 100)
+plt.plot([epochs, epochs], plt.gca().get_ylim(), '--', c='black')
+plt.savefig("fig1_train.pdf")
+
+# Plot test
+plt.figure()
+for title, vals in runs.items():
+    offset = epochs * vals[2]
+    x = np.arange(offset, offset + len(vals[1]))
+    y = vals[1]
+    plt.plot(x, y, label=title)
+plt.legend()
+
+plt.ylabel(" Test accuracy ")
+plt.ylim(0, 100)
+plt.plot([epochs, epochs], plt.gca().get_ylim(), '--', c='black')
+plt.savefig("fig1_test.pdf")
+```
+:::
+
+::: {.cell .markdown}
+## Explaining the results
 
 In this section we will answer the questions in the begining of the notebook and maybe leave some room for the student to add his answers
 :::
