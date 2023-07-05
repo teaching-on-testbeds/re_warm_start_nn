@@ -253,7 +253,7 @@ def get_cifar10_loaders(use_half_train=False, batch_size=128, dataset_portion=No
 ::: {.cell .markdown}
 *** 
 
-The following function is the `exp1` which trains a ResNet-18 model on the CIFAR-10 dataset and returns the train and test accuracies. The function takes six parameters:
+The following function is the `train_model_exp1` which trains a ResNet-18 model on the CIFAR-10 dataset and returns the train and test accuracies. The function takes six parameters:
 
 - `title`: a string that specifies the name of the experiment. This is used to create a subdirectory under the `experiments/exp1` directory where the model checkpoints and final weights will be saved.
 - `experiment_dir`: a string that specifies the path of the experiment directory. If this is `None`, then the function will use the title parameter to create a default directory name.
@@ -273,7 +273,7 @@ def get_accuracy(logit, true_y):
     return (pred_y == true_y).float().mean()
 
 # Function to train the model and return train and test accuracies
-def exp1(title='', experiment_dir=None, half = False, lr = 0.001, checkpoint = None, epochs = 10):
+def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.001, checkpoint=None, epochs=10):
     # Create experiment directory name if none
     if experiment_dir is None:
         experiment_dir = os.path.join('experiments/exp1', title)
@@ -293,7 +293,7 @@ def exp1(title='', experiment_dir=None, half = False, lr = 0.001, checkpoint = N
         device = torch.device('cpu')
 
     # Get the dataset
-    loaders = get_cifar10_loaders(use_half_train=half)
+    loaders = get_cifar10_loaders(use_half_train=use_half_data)
     num_classes = loaders.get('num_classes', 10)
 
     # Get the model
@@ -373,94 +373,80 @@ def exp1(title='', experiment_dir=None, half = False, lr = 0.001, checkpoint = N
 ::: {.cell .markdown}
 ***
 
-You should fill the following cell with values that will be used for running the experiment. You can refer to the experiment description above to choose the correct values.
+To be used warm-starting a model later, we first train a model for 350 epochs on 50% of the CIFAR-10 dataset. We keep track of the train and test accuracies at each epoch, which will form the blue line on the left half of figure 1.
 
+We set `use_half_data` to `True` to train on only half of the CIFAR-10 dataset. We don’t need a `checkpoint` since we start from scratch. We use `lr = 0.001` for all models, following the original paper.
 :::
 
 ::: {.cell .code}
 ``` python
-# TODO: put the correct values for the following parameters
+# initialize runs dictionary to hold runs outputs
+runs = {}
 
-# Set the number of epochs for all experiments
-num_epochs = 
+# Run the train_model_exp1 function to get train and test accuracies for the first model ( trained on half the data )
+half_cifar_train_acc, half_cifar_test_acc = train_model_exp1( title="half_cifar",
+                                                                use_half_data=True,
+                                                                lr=0.001,
+                                                                checkpoint=None,
+                                                                epochs=350 )
 
-# Train on half of the CIFAR-10 dataset
-half_cifar_title =          # You can choose any title
-use_half_data = 
-half_cifar_lr = 
-half_cifar_checkpoint = 
-
-# Train a warm-started model on the full dataset
-warm_start_title = 
-use_half_data2 = 
-warm_start_lr = 
-warm_start_checkpoint = 
-
-# Train a randomly initialized model on the full dataset
-full_cifar_title = 
-use_half_data3 = 
-full_cifar_lr = 
-full_cifar_checkpoint =  
-```
-:::
-
-::: {.cell .code}
-``` python
-# Solution
-
-# Set the number of epochs for all experiments
-num_epochs = 350
-
-# Train on half of the CIFAR-10 dataset
-half_cifar_title = "half_cifar"  
-use_half_data = True
-half_cifar_lr = 0.001
-half_cifar_checkpoint = None
-
-# Train a warm-started model on the full dataset
-warm_start_title = "warm_start"
-use_half_data2 = False
-warm_start_lr = 0.001
-warm_start_checkpoint = 'experiments/exp1/{}/final.pt'.format(half_cifar_title);
-
-# Train a randomly initialized model on the full dataset
-full_cifar_title = "full_cifar"
-use_half_data3 = False
-full_cifar_lr = 0.001
-full_cifar_checkpoint = None 
+# Put the results in the runs dictionary
+runs["half_cifar"] = [half_cifar_train_acc, half_cifar_test_acc, 0]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-The following cell trains the three required models. This cell can take some time to run!
+Now we use the previous model to train a warm-starting model for 350 epochs on 100% of the CIFAR-10 dataset. We keep track of the train and test accuracies at each epoch, which will form the blue line on the right half of figure 1.
+
+We set `use_half_data` to `False` to train on the full CIFAR-10 dataset. We add a `checkpoint` to the model trained on 50% of the data.
 :::
 
 ::: {.cell .code}
 ``` python
-# Run the exp1 function to get train and test accuracies for each model
-half_cifar_train_acc, half_cifar_test_acc = exp1(title=half_cifar_title, half=use_half_data, lr=half_cifar_lr, checkpoint=half_cifar_checkpoint, epochs=num_epochs)
-warm_start_train_acc, warm_start_test_acc = exp1(title=warm_start_title, half=use_half_data2, lr=warm_start_lr, checkpoint=warm_start_checkpoint, epochs=num_epochs)
-full_cifar_train_acc, full_cifar_test_acc = exp1(title=full_cifar_title, half=use_half_data3, lr=full_cifar_lr, checkpoint=full_cifar_checkpoint, epochs=num_epochs)
+# Run the train_model_exp1 function to get train and test accuracies for the Second model ( warm starting )
+warm_start_train_acc, warm_start_test_acc = train_model_exp1( title="warm_start",
+                                                                use_half_data=False,
+                                                                lr=0.001,
+                                                                checkpoint='experiments/exp1/half_cifar/final.pt',
+                                                                epochs=350 )
+
+# Put the results in the runs dictionary
+runs["warm_start"] = [warm_start_train_acc, warm_start_test_acc, 1]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-Now we save the training and test accuracies in a dictionary and save it in `runs.json`.
+Finaly, we train a model for 350 epochs on 100% of the CIFAR-10 dataset. We keep track of the train and test accuracies at each epoch, which will form the orange line on the right half of figure 1.
+
+We set `use_half_data` to `False` to train on the full CIFAR-10 dataset. We don’t need a `checkpoint` since we start from scratch.
 :::
 
 ::: {.cell .code}
 ``` python
-# Save all results in a dictionary
-runs = {
-    half_cifar_title : [half_cifar_train_acc, half_cifar_test_acc, 0],
-    warm_start_title : [warm_start_train_acc, warm_start_test_acc, 1],
-    full_cifar_title : [full_cifar_train_acc, full_cifar_test_acc, 1]
-}
+# Run the train_model_exp1 function to get train and test accuracies for the Last model ( randomly initialized )
+full_cifar_train_acc, full_cifar_test_acc = train_model_exp1( title="full_cifar",
+                                                                use_half_data=False,
+                                                                lr=0.001,
+                                                                checkpoint=None,
+                                                                epochs=350 )
 
+# Put the results in the runs dictionary
+runs["full_cifar"] = [full_cifar_train_acc, full_cifar_test_acc, 1]
+```
+:::
+
+::: {.cell .markdown}
+***
+
+Now we save the training and test accuracies in the runs dictionary in `runs.json`.
+:::
+
+::: {.cell .code}
+``` python
 # Save the outputs in a json file
 with open("experiments/exp1/runs.json", "w") as f:
     json.dump(runs, f)
@@ -479,6 +465,10 @@ Let’s visualize the accuracies and analyze the outcomes! Run the next cell to 
 with open("experiments/exp1/runs.json", "r") as f:
     runs = json.load(f)
 
+# Get number of epochs
+epochs = len(list(runs.items())[0][1][0])
+
+# Plot train Figure
 plt.figure()
 for title, vals in runs.items():
     offset = epochs * vals[2]
@@ -492,7 +482,7 @@ plt.ylim(0, 100)
 plt.plot([epochs, epochs], plt.gca().get_ylim(), '--', c='black')
 plt.savefig("fig1_train.pdf")
 
-# Plot test
+# Plot test Figure
 plt.figure()
 for title, vals in runs.items():
     offset = epochs * vals[2]
