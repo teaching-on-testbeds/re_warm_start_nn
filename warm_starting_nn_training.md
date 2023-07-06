@@ -181,25 +181,23 @@ from torchvision import transforms, datasets, models
 ::: {.cell .markdown}
 ***
 
-The following function is `get_cifar10_loaders` that loads the CIFAR-10 dataset, which consists of 60,000 color images of 10 classes, and returns data loaders for training and testing. The function takes four parameters:
+The following function is `get_cifar10_loaders` that loads the CIFAR-10 dataset, which consists of 60,000 color images of 10 classes, and returns data loaders for training and testing. The function takes three parameters:
 
 - `use_half_train`: a boolean flag that indicates whether to use only half of the training data or the whole dataset. If this is set to `True`, then the parameter `dataset_portion` is automatically set to 0.5.
 - `batch_size`: an integer that specifies the number of images to process in each batch. A larger batch size may speed up the training but also require more memory.
 - `dataset_portion`: a double value between 0 and 1 that indicates the portion of the training data to use. For example, if this is set to 0.8, then only 80% of the training data will be used and the rest will be discarded. This parameter is useful for experimenting with different amounts of data or for creating validation splits.
-- `drop_last`: a boolean flag that indicates whether to drop the last incomplete batch or not. If this is set to `True`, then the last batch that has less than `batch_size` images will be ignored. This parameter may affect the accuracy of the model depending on how many images are left out.
 
 The function returns a dictionary with two keys: `train_loader` and `test_loader` which can be used to iterate over the training and testing data respectively. The function also downloads the CIFAR-10 dataset from torchvision datasets if it is not already present in the specified directory.
 :::
 
 ::: {.cell .code}
 ``` python
-def get_cifar10_loaders(use_half_train=False, batch_size=128, dataset_portion=None, drop_last=False):
+def get_cifar10_loaders(use_half_train=False, batch_size=128, dataset_portion=None):
     """
     This loads the whole CIFAR-10 into memory and returns train and test data according to params
     @param use_half_train (bool): return half the data or the whole train data
     @param batch_size (int): batch size for training and testing
     @param dataset_portion (double): portion of train data
-    @param drop_last (bool): flag to drop last incomplete batch
 
     @returns dict() with train and test data loaders with keys `train_loader`, `test_loader`
     """
@@ -221,6 +219,7 @@ def get_cifar10_loaders(use_half_train=False, batch_size=128, dataset_portion=No
     
     # Check half data flag
     if use_half_train:
+        print('Using Half Data')
         dataset_portion = 0.5
         
     # Check if only a portion is required
@@ -237,7 +236,6 @@ def get_cifar10_loaders(use_half_train=False, batch_size=128, dataset_portion=No
     train_loader = torch.utils.data.DataLoader(
         dataset=original_train_dataset,
         shuffle=True,
-        drop_last=drop_last,
         **loader_args)
 
     test_loader = torch.utils.data.DataLoader(
@@ -257,7 +255,7 @@ The following function is the `train_model_exp1` which trains a ResNet-18 model 
 
 - `title`: a string that specifies the name of the experiment. This is used to create a subdirectory under the `experiments/exp1` directory where the model checkpoints and final weights will be saved.
 - `experiment_dir`: a string that specifies the path of the experiment directory. If this is `None`, then the function will use the title parameter to create a default directory name.
-- `half`: a boolean flag that indicates whether to use half of the training data or the whole dataset. This is passed to the `get_cifar10_loaders` function that loads the data loaders.
+- `use_half_data`: a boolean flag that indicates whether to use half of the training data or the whole dataset. This is passed to the `get_cifar10_loaders` function that loads the data loaders.
 - `lr`: a float value that specifies the learning rate for the stochastic gradient descent optimizer.
 - `checkpoint`: a string that specifies the path of a model checkpoint file. If this is not `None`, then the function will load the model weights from the checkpoint file and resume training from there.
 - `epochs`: an integer that specifies the number of epochs to train the model for.
@@ -495,6 +493,595 @@ plt.ylabel(" Test accuracy ")
 plt.ylim(0, 100)
 plt.plot([epochs, epochs], plt.gca().get_ylim(), '--', c='black')
 plt.savefig("fig1_test.pdf")
+```
+:::
+
+::: {.cell .markdown}
+Now compare the the Figure you got with the one from the claim
+
+***
+:::
+
+
+::: {.cell .markdown}
+### Experiment 2:
+
+In this experiment, we compare two methods of weight initialization: warm-starting and random initialization, for three models: **ResNet18**, **3-layer MLP** and **logistic regression**. We also compare two optimizers: **SGD** and **Adam**, for updating the weights based on the gradients. We use three image classification datasets:  **CIFAR-10**, **CIFAR-100** and **SVHN**, and report the test accuracy of each model on each dataset.
+
+We use the same components as in experiment one: the `get_cifar10_loader` function to load the CIFAR-10 dataset, the [**ResNet18**](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html) model from `torchvision.models`, and the [**SGD**](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) optimizer from `torch.optim`. We also introduce some new components:
+
+1. The `get_cifar100_loaders` function to load the CIFAR-100 dataset, which has 100 classes of images.
+2. The `get_svhn_loaders` function to load the SVHN dataset, which has 10 classes of street view house numbers.
+3. The `MLP` class that defines a 3-layer MLP model with a tanh activation function and a bias term.
+4. The logistic function that creates a logistic regression model.
+5. The `torch.optim.Adam` class that implements the [**Adam**](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html) optimizer, which is an adaptive learning rate method.
+:::
+
+
+::: {.cell .markdown}
+***
+
+The following function is `get_cifar100_loaders` that loads the CIFAR-100 dataset, which consists of 60,000 color images of 100 classes, and returns data loaders for training and testing. The function takes the same three parameters as `get_cifar10_loaders`:
+
+- `use_half_train`: a boolean flag that indicates whether to use only half of the training data or the whole dataset. If this is set to `True`, then the parameter dataset_portion is automatically set to 0.5.
+- `batch_size`: an integer that specifies the number of images to process in each batch. A larger batch size may speed up the training but also require more memory. 
+- `dataset_portion`: a double value between 0 and 1 that indicates the portion of the training data to use. For example, if this is set to 0.8, then only 80% of the training data will be used and the rest will be discarded.
+
+The function returns a dictionary with two keys: `train_loader` and `test_loader` which can be used to iterate over the training and testing data respectively. The function also downloads the CIFAR-100 dataset from torchvision datasets if it is not already present in the specified directory.
+:::
+
+::: {.cell .code}
+``` python
+# This is the CIFAR-100 data loader function
+def get_cifar100_loaders(use_half_train=False, dataset_portion=None, batch_size=128):
+    """
+    This loads the whole CIFAR-100 into memory and returns train and test data according to params
+    @param use_half_train (bool): return half the data or the whole train data
+    @param dataset_portion (double): portion of train data
+
+    @returns dict() with train and test data loaders and number of classes
+            with keys `train_loader`, `test_loader`, `num_classes`
+    """
+
+    # Normalization using channel means
+    normalize_transform = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+
+    # Creating transform function
+    train_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+        
+    # Test transformation function    
+    test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+    
+    # Loading train and test data from torchvision
+    original_train_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
+                                               train=True, transform=train_transform, download=True)
+    original_test_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
+                                              train=False, transform=test_transform, download=True)
+    
+    # Check if half or only portion of train data is required
+    if use_half_train:
+        print('Using Half Data')
+        dataset_portion = 0.5
+    
+    # Split the data to get required portion
+    if dataset_portion:
+        dataset_size = len(original_train_dataset)
+        split = int(np.floor((1 - dataset_portion) * dataset_size))
+        original_train_dataset, _ = random_split(original_train_dataset, [dataset_size - split, split])
+    
+    # Create data loaders
+    loader_args = {
+        "batch_size": batch_size,
+    }
+
+    train_loader = torch.utils.data.DataLoader(
+
+        dataset=original_train_dataset,
+        shuffle=True,
+        **loader_args)
+
+    test_loader = torch.utils.data.DataLoader(
+        dataset=original_test_dataset,
+        shuffle=False,
+        **loader_args)
+
+    return {"train_loader": train_loader,
+            "test_loader": test_loader}
+```
+:::
+
+::: {.cell .markdown}
+***
+
+The following function is `get_svhn_loaders` that loads the SVHN dataset, which consists of 73,257 color images of street view house numbers, and returns data loaders for training and testing. The function takes the same three parameters as `get_cifar10_loaders`:
+
+- `use_half_train`: a boolean flag that indicates whether to use only half of the training data or the whole dataset. If this is set to `True`, then the parameter dataset_portion is automatically set to 0.5. 
+- `batch_size`: an integer that specifies the number of images to process in each batch. A larger batch size may speed up the training but also require more memory. 
+- `dataset_portion`: a double value between 0 and 1 that indicates the portion of the training data to use. For example, if this is set to 0.8, then only 80% of the training data will be used and the rest will be discarded.
+
+The function returns a dictionary with two keys: `train_loader` and `test_loader` which can be used to iterate over the training and testing data respectively. The function also downloads the SVHN dataset from torchvision datasets if it is not already present in the specified directory.
+:::
+
+::: {.cell .code}
+``` python
+# These are the SVHN data loader functions
+def get_svhn_loaders(use_half_train=False, dataset_portion=None, batch_size=128):
+    """
+    This loads the whole SVHN data into memory and returns train and test data according to params
+    @param use_half_train (bool): return half the data or the whole train data
+    @param dataset_portion (double): portion of train data
+    @param batch_size (int): batch size for training and testing
+
+    @returns dict() with train and test data loaders with keys `train_loader`, `test_loader`
+    """
+    
+    # Normalize data with channel means
+    normalize_transform = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    
+    # Creating transform function
+    train_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+        
+    # Test transformation function    
+    test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+    
+    # Loading data from torchvision
+    original_train_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
+                                           split='train', transform=train_transform, download=True)
+    original_test_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
+                                          split='test', transform=test_transform, download=True)
+
+    # Check if half or only portion of train data is required
+    if use_half_train:
+        print('Using Half Data')
+        dataset_portion = 0.5
+    
+    # Split the data to get required portion
+    if dataset_portion:
+        dataset_size = len(original_train_dataset)
+        split = int(np.floor((1 - dataset_portion) * dataset_size))
+        original_train_dataset, _ = random_split(original_train_dataset, [dataset_size - split, split])
+    
+    # Create data loaders
+    loader_args = {
+        "batch_size": batch_size,
+    }
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset=original_train_dataset,
+        shuffle=True,
+        **loader_args)
+
+    test_loader = torch.utils.data.DataLoader(
+        dataset=original_test_dataset,
+        shuffle=False,
+        **loader_args)
+
+    return {"train_loader": train_loader,
+            "test_loader": test_loader}
+```
+:::
+
+
+::: {.cell .markdown}
+***
+
+The next cell defines a function that takes the name and arguments of a data loader and returns the corresponding train and test loaders.
+:::
+
+::: {.cell .code}
+``` python
+# Dictionary to call datasets
+dataset_factories = {
+    'cifar10': get_cifar10_loaders,
+    'svhn': get_svhn_loaders,
+    'cifar100': get_cifar100_loaders,
+}
+
+# fucntion to get dataset
+def get_dataset(name, *args, **kwargs):
+    return dataset_factories[name](*args, **kwargs)
+```
+:::
+
+::: {.cell .markdown}
+***
+
+This function defines a class for a **multilayer perceptron** (MLP) model with several fully connected (fc) layers and a final fully connected layer for the logits output. The arguments are:
+
+- `input_dim`: the input feature dimension
+- `num_classes`: the output class number
+- `hidden_units`: the hidden unit number for each fc layer
+- `activation`: the activation function, either `tanh` or `relu`
+- `bias`: whether to use bias terms in the fc layers, default `True`
+
+The function returns an MLP model object that can be trained or tested. The forward method takes an input tensor x and returns an output tensor x with the logits values. The output tensor does not have a final activation function. This will be used to create the **3-layer MLP** model.
+:::
+
+::: {.cell .code}
+``` python
+# Define a class for a multilayer perceptron (MLP) model
+class MLP(nn.Module):
+    def __init__(self, input_dim, num_classes=10, hidden_units=[100, 100, 100], activation='tanh', bias=True):
+        super().__init__()
+
+        # Check that the activation argument is valid
+        assert activation in ['tanh', 'relu'], "Activation must be tanh or relu"
+
+        # Assign the activation function based on the argument
+        if activation == 'tanh':
+            self.activation_function = torch.tanh
+        if activation == 'relu':
+            self.activation_function = torch.relu
+        
+        # Store num_classes and input_dim to be used in forward function
+        self.num_classes = num_classes
+        self.input_dim = input_dim
+        
+        # Initialize a variable to keep track of the last dimension of the layers
+        last_dim = input_dim
+        
+        # Initialize an empty list to store the fully connected (fc) layers
+        self.fcs = []
+        
+        # Loop through the hidden units argument and create fc layers with the given dimensions and bias
+        for i, n_h in enumerate(hidden_units):
+            self.fcs.append(nn.Linear(last_dim, n_h, bias=bias))
+            # Register the fc layer as a submodule with a name
+            self.add_module(f"hidden_layer_{i}", self.fcs[-1])
+            # Update the last dimension to match the output dimension of the fc layer
+            last_dim = n_h
+            
+        # Create a final fc layer for the logits output with the number of classes and bias
+        self.logit_fc = nn.Linear(last_dim, self.num_classes, bias=bias)
+
+        
+    def forward(self, x):
+        # Reshape the input x to have a batch size and an input dimension
+        x = x.view(-1, self.input_dim)
+        
+        # Loop through the fc layers and apply them to x with the activation function
+        for fc in self.fcs:
+            x = fc(x)
+            x = self.activation_function(x)
+            
+        # Apply the final fc layer to x and return it as the output
+        x = self.logit_fc(x)
+        
+        # x is returned without adding the final activation
+        return x
+```
+:::
+
+
+::: {.cell .markdown}
+***
+
+The following function return the **logistic regression** model by using the previous MLP class.
+:::
+
+::: {.cell .code}
+``` python
+def logistic(input_dim, num_classes=10):
+    return MLP(input_dim, num_classes, hidden_units=[])
+```
+:::
+
+::: {.cell .markdown}
+***
+
+The following function creates a model object based on the given name and arguments.
+:::
+
+::: {.cell .code}
+``` python
+## Model factories, this function will be used to create models
+model_factories = {
+    'resnet18': models.resnet18,
+    'mlp': MLP,
+    'logistic': logistic,
+}
+
+# model getter
+def get_model(name, *args, **kwargs):
+    return model_factories[name](*args, **kwargs)
+```
+:::
+
+::: {.cell .markdown}
+***
+
+The following cell defines two functions that perform one epoch of training or evaluation on a data loader. They return the average loss and accuracy of the model.
+:::
+
+::: {.cell .code}
+``` python
+def eval_on_dataloader(device, criterion, model, dataloader):
+    """
+    Evaluate the model on a given data loader and return the average loss and accuracy.
+
+    Parameters:
+    device: the device (cpu or gpu) to use for computation
+    criterion: the loss function to use
+    model: the model to evaluate
+    dataloader: the data loader to iterate over the data
+
+    Returns:
+    loss: the average loss over the data loader
+    accuracy: the average accuracy over the data loader
+    """
+    # Lists to store accuracy and loss
+    accuracies = []
+    losses = []
+    
+    for batch_idx, (data_x, data_y) in enumerate(dataloader): 
+        data_x = data_x.to(device) 
+        data_y = data_y.to(device)
+        
+        # get the model output for the input data
+        model_y = model(data_x) 
+        
+        # compute the loss and accuracy
+        loss = criterion(model_y, data_y)
+        batch_accuracy = get_accuracy(model_y, data_y)
+        
+        # append accuracy and loss to lists
+        accuracies.append(batch_accuracy.item()) 
+        losses.append(loss.item())
+
+    # compute average loss and accuracy
+    loss = np.mean(losses) 
+    accuracy = np.mean(accuracies) 
+    return loss, accuracy 
+
+
+def train_one_epoch(device, model, optimizer, criterion, dataloader):
+    """
+    Train the model for one epoch on a given training data loader and return the average loss and accuracy.
+
+    Parameters:
+    device: the device (cpu or gpu) to use for computation
+    model: the model to train
+    optimizer: the optimizer to use for updating the weights
+    criterion: the loss function to use
+    train_dataloader: the training data loader to iterate over the training data
+
+    Returns:
+    train_loss: the average loss over the training data loader
+    train_accuracy: the average accuracy over the training data loader
+    """
+    # Lists to store accuracy and loss
+    accuracies = []
+    losses = [] 
+    
+    for batch_idx, (data_x, data_y) in enumerate(dataloader):
+        data_x = data_x.to(device) 
+        data_y = data_y.to(device) 
+        
+         # reset the gradients of the optimizer
+        optimizer.zero_grad()
+        
+        # get the model output for the input data
+        model_y = model(data_x)
+        
+        # compute the loss and accuracy
+        loss = criterion(model_y, data_y)
+        batch_accuracy = get_accuracy(model_y, data_y)
+        
+        # compute the gradients and update model parameters
+        loss.backward()
+        optimizer.step()
+
+        # append accuracy and loss to lists
+        accuracies.append(batch_accuracy.item()) 
+        losses.append(loss.item())
+
+    # compute average loss and accuracy
+    loss = np.mean(losses) 
+    accuracy = np.mean(accuracies) 
+    return loss, accuracy 
+
+```
+:::
+
+::: {.cell .markdown}
+***
+
+//////////// add description //////////////////
+:::
+
+::: {.cell .code}
+``` python
+def train_table1(title='Table1', lr=0.001, convergence_epochs=3, train_threshold=0.5,
+         convergence_accuracy_change_threshold=0.002, random_seed=42, checkpoint=None):
+    
+    # Create directory in exp with experiment title
+    experiment_dir = os.path.join('experiments/exp2', title)
+    os.makedirs(experiment_dir)
+
+    # use gpu if available ( change device id if needed )
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0')
+        print("CUDA Recognized")
+    else:
+        device = torch.device('cpu')
+
+    # Training with Random Initialization 
+    overal_result = {}
+    init_type = "random"
+    dataset_result = {}
+    for (dataset_name, num_classes) in [("cifar10", 10), ("cifar100", 100), ("svhn", 10)]:
+        model_args = {
+            "resnet18": {"num_classes": num_classes},
+            "mlp": {"input_dim": 32 * 32 * 3, "num_classes": num_classes, 'activation':'tanh', 'bias':True},
+            "logistic": {"input_dim": 32 * 32 * 3, "num_classes": num_classes},
+        }
+        
+        optimizer_result = {}
+        for optimizer_name in ["adam", "sgd"]:
+            model_result = {}
+            for model_name in ["mlp", "logistic", "resnet18"]:
+                print(f"Training model {model_name} on {dataset_name} with {optimizer_name} optimizer.")
+                torch.manual_seed(random_seed)
+                np.random.seed(random_seed)
+                model = get_model(model_name, **model_args[model_name]).to(device)
+                loaders = get_dataset(dataset_name)
+                criterion = torch.nn.CrossEntropyLoss()
+
+                if optimizer_name == "adam":
+                    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+                else:
+                    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+            
+                train_accuracies = []
+                stop_indicator = False
+                epoch = 0
+                while(not stop_indicator):
+                    if epoch % 5 == 0:
+                        print(f"\t Training in epoch {epoch + 1} \t")
+                    train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
+                    train_loss, train_accuracy = eval_on_dataloader(device, criterion, model, loaders['train_loader'])
+
+                    train_accuracies.append(train_accuracy)
+                    epoch += 1
+                    if train_accuracy >= train_threshold:
+                        print(f"Convergence codition met. Training accuracy > {train_threshold}")
+                        stop_indicator = True
+                    
+                    if len(train_accuracies) >= convergence_epochs:
+                        if np.std(train_accuracies[-convergence_epochs:]) < convergence_accuracy_change_threshold:
+                            print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                            stop_indicator = True
+
+                test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
+                print(f"\tTest accuracy = {test_accuracy}")
+                model_result[model_name] = test_accuracy
+                
+            optimizer_result[optimizer_name] = model_result
+        dataset_result[dataset_name] = optimizer_result
+    overal_result[init_type] = dataset_result
+
+    
+    # Training with warm-start
+    init_type = "warm-start"
+    dataset_result = {}
+    for (dataset_name, num_classes) in [("cifar10", 10), ("cifar100", 100), ("svhn", 10)]:
+        model_args = {
+            "resnet18": {"num_classes": num_classes},
+            "mlp": {"input_dim": 32 * 32 * 3, "num_classes": num_classes}, 
+            "logistic": {"input_dim": 32 * 32 * 3, "num_classes": num_classes},
+        }
+        
+        optimizer_result = {}
+        for optimizer_name in ["adam", "sgd"]:
+            model_result = {}
+            for model_name in ["mlp", "logistic", "resnet18"]:
+                print(f"Training model {model_name} on half of {dataset_name} with {optimizer_name} optimizer.")
+                torch.manual_seed(random_seed)
+                np.random.seed(random_seed)
+                model = get_model(model_name, **model_args[model_name]).to(device)
+                loaders = get_dataset(dataset_name, True)
+                criterion = torch.nn.CrossEntropyLoss()
+
+                if optimizer_name == "adam":
+                    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+                else:
+                    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+                    
+                train_accuracies = []
+                stop_indicator = False
+                epoch = 0
+                while(not stop_indicator):
+                    if epoch % 5 == 0:
+                        print(f"\tPre-training in epoch {epoch + 1}")
+                    train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
+                    train_loss, train_accuracy = eval_on_dataloader(device, criterion, model, loaders['train_loader'])
+                    
+                    train_accuracies.append(train_accuracy)
+                    epoch += 1
+                    if train_accuracy >= train_threshold:
+                        print(f"Convergence codition met. Training accuracy > {train_threshold}")
+                        stop_indicator = True
+                    
+                    if len(train_accuracies) >= convergence_epochs:
+                        if np.std(train_accuracies[-convergence_epochs:]) < convergence_accuracy_change_threshold:
+                            print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                            stop_indicator = True
+                            
+                loaders = datasets.get_dataset(dataset_name)
+                criterion = torch.nn.CrossEntropyLoss()
+                train_accuracies = []
+                stop_indicator = False
+                epoch = 0
+                while(not stop_indicator):
+                    if epoch % 5 == 0:
+                        print(f"\t Training in epoch {epoch + 1}")
+                    train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
+                    train_loss, train_accuracy = eval_on_dataloader(device, criterion, model, loaders['train_loader'])
+                    
+                    train_accuracies.append(train_accuracy)
+                    epoch += 1
+                    if train_accuracy >= train_threshold:
+                        print(f"Convergence codition met. Training accuracy > {train_threshold}")
+                        stop_indicator = True
+                    
+                    if len(train_accuracies) >= convergence_epochs:
+                        if np.std(train_accuracies[-convergence_epochs:]) < convergence_accuracy_change_threshold:
+                            print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                            stop_indicator = True
+
+                test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
+                print(f"\tTest accuracy = {test_accuracy}")
+                model_result[model_name] = test_accuracy
+                
+            optimizer_result[optimizer_name] = model_result
+        dataset_result[dataset_name] = optimizer_result
+    overal_result[init_type] = dataset_result
+
+    np.save(f"tables/table1-svhn-seed{random_seed}.npy", overal_result)
+    return overal_result
+```
+:::
+
+::: {.cell .markdown}
+***
+
+In the next cell we run the whole experiment
+:::
+
+::: {.cell .code}
+``` python
+# Run the experiment
+overal_result = train_table1()
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We save the result from the run to be able to use it later
+:::
+
+::: {.cell .code}
+``` python
+# Save the outputs in a json file
+with open("experiments/exp2/overal_result.json", "w") as f:
+    json.dump(overal_result, f)
+```
+:::
+
+::: {.cell .markdown}
+***
+
+In the next cell we plot the table
+:::
+
+::: {.cell .code}
+``` python
+# Read from json file
+with open("experiments/exp1/runs.json", "r") as f:
+    runs = json.load(f)
+
+# ////////////////////// plot //////////////////////
 ```
 :::
 
