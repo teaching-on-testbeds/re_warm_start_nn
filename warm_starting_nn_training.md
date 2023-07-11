@@ -193,33 +193,6 @@ The function returns a dictionary with two keys: `train_loader` and `test_loader
 
 ::: {.cell .code}
 ``` python
-# A dictionary that maps dataset names to PyTorch dataset classes
-dataset_factories = {
-    'cifar10': datasets.CIFAR10,
-    'svhn': datasets.SVHN,
-    'cifar100': datasets.CIFAR100,
-}
-
-def get_dataFromTorch(dataset='cifar10', train=True, transform=None):
-    """Returns a PyTorch dataset object from a predefined list of options.
-
-    Args:
-        dataset (str, optional): The name of the dataset to load. Must be one of 'cifar10', 'svhn', or 'cifar100'. Defaults to 'cifar10'.
-        train (bool, optional): Whether to load the training or testing split of the dataset. Defaults to True.
-        transform (callable, optional): A function/transform that takes in a PIL image and returns a transformed version. Defaults to None.
-
-    Returns:
-        torch.utils.data.Dataset: A PyTorch dataset object containing the images and labels.
-    """
-    if dataset == 'svhn':
-        original_dataset = dataset_factories[dataset](root=os.path.join('data', dataset+'_data'),
-                                             split='train' if train else 'test', transform=transform, download=True)
-    else:
-        original_dataset = dataset_factories[dataset](root=os.path.join('data', dataset+'_data'),
-                                             train=train, transform=transform, download=True)
-    return original_dataset
-
-
 def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset_portion=None):
     """
     This loads the whole CIFAR-10 into memory and returns train and test data according to params
@@ -239,9 +212,22 @@ def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset
     # Test transformation function    
     test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
     
-    # loading data from torchvision datasets
-    original_train_dataset = get_dataFromTorch(dataset=dataset, train=True, transform=train_transform)
-    original_test_dataset = get_dataFromTorch(dataset=dataset, train=False, transform=test_transform)
+    # Check which dataset is required and load data from torchvision datasets
+    if dataset == 'cifar10':
+        original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                             train=True, transform=train_transform, download=True)
+        original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                             train=False, transform=test_transform, download=True)
+    elif dataset == 'cifar100':
+        original_train_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
+                                             train=True, transform=train_transform, download=True)
+        original_test_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
+                                             train=False, transform=test_transform, download=True)
+    else:
+        original_train_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
+                                             split='train', transform=train_transform, download=True)
+        original_test_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
+                                             split='test', transform=test_transform, download=True)
     
     # Check half data flag
     if use_half_train:
@@ -614,26 +600,6 @@ class MLP(nn.Module):
 ::: {.cell .markdown}
 ***
 
-The following function returns a model object based on the given name and arguments.
-:::
-
-::: {.cell .code}
-``` python
-# Dictionary that maps model names to model classes
-model_factories = {
-    'resnet18': models.resnet18,
-    'mlp': MLP
-}
-
-# Function that returns a model object given a model name and optional arguments
-def get_model(name, *args, **kwargs):
-    return model_factories[name](*args, **kwargs)
-```
-:::
-
-::: {.cell .markdown}
-***
-
 The following cell defines two functions that perform one epoch of training or evaluation on a data loader. They return the average loss and accuracy of the model. These functions will be used in the training function to run epoch by epoch.
 :::
 
@@ -730,23 +696,17 @@ def train_one_epoch(device, model, optimizer, criterion, dataloader):
 ::: {.cell .markdown}
 ***
 
-The `train_exp2` function trains ResNet18 and MLP models with warm-starting and random initialization on three datasets, using SGD and Adam optimizers separately. The function takes six parameters:
+The `train_to_threshold` function is the same as `train_model_exp1` functions except that it trains the model until a certain `training_threshold` or until the change in the training accuracy doesn't exceed `convergence_change_threshold` for certain number of epochs. The new parameter introduced are:
 
-- `title`: The title of the experiment run.
-- `lr`: The learning rate for the optimizers.
-- `convergence_epochs`: The number of epochs to check for convergence.
-- `train_threshold`: The training accuracy threshold to stop training.
-- `convergence_change_threshold`: The minimum training accuracy change required in the last `convergence_epochs` to continue training.
-- `random_seed`: The random seed for reproducibility.
-
-This function returns nested dictionary of test accuracies for each combination of initialization, dataset, optimizer and model to be used to recreate the table from second claim.
+- `train_threshold`: The training accuracy at which the model stops training.
+- `convergence_change_threshold`: The minimum accuracy change to continue training.
+- `convergence_epochs`: The maximum number of epochs allowed with insufficient change in training accuracy before stopping the training.
 :::
 
 ::: {.cell .code}
 ``` python
-def train_exp2(title='table1', lr=0.001, convergence_epochs=3, train_threshold=0.5,
-         convergence_change_threshold=0.002, random_seed=42):
-    
+def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False, convergence_epochs=3,
+                       train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
     # Create directory in exp with experiment title
     experiment_dir = os.path.join('experiments/exp2', title)
     os.makedirs(experiment_dir, exist_ok=True)
@@ -758,194 +718,635 @@ def train_exp2(title='table1', lr=0.001, convergence_epochs=3, train_threshold=0
     else:
         device = torch.device('cpu')
 
+    # Set random seeds for reproducibility
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
+
+    # Get the dataset
+    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
+
+    # Get the model
+    model = models.resnet18(num_classes=10).to(device)
+
+    # Create the optimizer
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+
+    # Create the loss function
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # Get model from checkpoint
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint, map_location=device)['model'])
+
+    print(f"Training {'warm-starting' if checkpoint is not None else 'random initialized'} ResNet-18 model with SGD optimizer" \
+                                                                f" on {'50%' if use_half_data else '100%'} of cifar10 dataset")
+
     # Dictionary to store final outputs
-    overal_result = {}
+    result = {}
+    train_accuracies = []
+    stop_indicator = False
+    model_name = 'resnet18'
+    epoch = 0
+    # Train until convergence or stop condition is met
+    while(not stop_indicator):
+        if epoch % 5 == 0:
+            print(f"\t Training in epoch {epoch + 1} \t")
+        # Train for one epoch and get loss and accuracy
+        train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
 
-    # Training with Random Initialization 
-    init_type = "random"
-    dataset_result = {}
-    # Loop over different datasets and number of classes
-    for (dataset_name, num_classes) in [("cifar10", 10), ("cifar100", 100), ("svhn", 10)]:
-        # Define model arguments based on dataset and number of classes
-        model_args = {
-            "resnet18": {"num_classes": num_classes},
-            "mlp": {"input_dim": 32 * 32 * 3, "num_classes": num_classes}
-        }
-        
-        optimizer_result = {}
-        # Loop over different optimizers
-        for optimizer_name in ["adam", "sgd"]:
-            model_result = {}
-            # Loop over different models
-            for model_name in ["mlp", "resnet18"]:
-                print(f"Training model {model_name} on {dataset_name} with {optimizer_name} optimizer.")
-                # Set random seeds for reproducibility
-                torch.manual_seed(random_seed)
-                np.random.seed(random_seed)
-                # Create model and move it to device (GPU or CPU)
-                model = get_model(model_name, **model_args[model_name]).to(device)
-                # Get data loaders for the dataset
-                loaders = get_loaders(dataset=dataset_name, use_half_train=False)
-                # Define loss function (cross entropy)
-                criterion = torch.nn.CrossEntropyLoss()
+        # Append training accuracy to list
+        train_accuracies.append(train_accuracy)
+        epoch += 1
+        # Check if training accuracy is above a threshold
+        if train_accuracy >= train_threshold:
+            print(f"Convergence codition met. Training accuracy > {train_threshold}")
+            stop_indicator = True
 
-                # Create optimizer based on name and learning rate
-                if optimizer_name == "adam":
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-                else:
-                    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-                
-                train_accuracies = []
-                stop_indicator = False
-                epoch = 0
-                # Train until convergence or stop condition is met
-                while(not stop_indicator):
-                    if epoch % 5 == 0:
-                        print(f"\t Training in epoch {epoch + 1} \t")
-                    # Train for one epoch and get loss and accuracy
-                    train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
-                    # Evaluate on training set and get loss and accuracy
-                    train_loss, train_accuracy = eval_on_dataloader(device, criterion, model, loaders['train_loader'])
+        # Check if training accuracy has stopped improving for a number of epochs
+        if len(train_accuracies) >= convergence_epochs:
+            if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
+                print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                stop_indicator = True
 
-                    # Append training accuracy to list
-                    train_accuracies.append(train_accuracy)
-                    epoch += 1
-                    # Check if training accuracy is above a threshold
-                    if train_accuracy >= train_threshold:
-                        print(f"Convergence codition met. Training accuracy > {train_threshold}")
-                        stop_indicator = True
-                    
-                    # Check if training accuracy has stopped improving for a number of epochs
-                    if len(train_accuracies) >= convergence_epochs:
-                        if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
-                            print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
-                            stop_indicator = True
+    # Evaluate on test set and get loss and accuracy
+    test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
+    print(f"\tTest accuracy = {test_accuracy}")
 
-                # Evaluate on test set and get loss and accuracy
-                test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
-                print(f"\tTest accuracy = {test_accuracy}")
-                # Store test accuracy for the model
-                model_result[model_name] = test_accuracy
-                
-            # Store test accuracies for the optimizer
-            optimizer_result[optimizer_name] = model_result
-        # Store test accuracies for the dataset
-        dataset_result[dataset_name] = optimizer_result
-    # Store test accuracies for the initialization type
-    overal_result[init_type] = dataset_result
+    # Store test accuracy for the model
+    result[model_name] = test_accuracy
 
+    # save the model
+    model_name = model_name+'-sgd'
+    model_directory =  os.path.join(experiment_dir, f'{model_name}.pt')
+    torch.save({
+        'model': model.state_dict()
+    }, model_directory)
 
-    
-    # Training with warm-start
-    init_type = "warm-start"
-    dataset_result = {}
-    # Loop over different datasets and number of classes
-    for (dataset_name, num_classes) in [("cifar10", 10), ("cifar100", 100), ("svhn", 10)]:
-        model_args = {
-            "resnet18": {"num_classes": num_classes},
-            "mlp": {"input_dim": 32 * 32 * 3, "num_classes": num_classes}
-        }
-        
-        optimizer_result = {}
-        # Loop over different optimizers
-        for optimizer_name in ["adam", "sgd"]:
-            model_result = {}
-            # Loop over different models
-            for model_name in ["mlp", "resnet18"]:
-                print(f"Training model {model_name} on half of {dataset_name} with {optimizer_name} optimizer.")
-                # Set random seeds for reproducibility
-                torch.manual_seed(random_seed)
-                np.random.seed(random_seed)
-                # Create model and move it to device (GPU or CPU)
-                model = get_model(model_name, **model_args[model_name]).to(device)
-                # Get data loaders for the dataset
-                loaders = get_loaders(dataset=dataset_name, use_half_train=True)
-                # Define loss function (cross entropy)
-                criterion = torch.nn.CrossEntropyLoss()
+    print(f"Model saved to checkpoint: {model_directory}")
 
-                # Create optimizer based on name and learning rate
-                if optimizer_name == "adam":
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-                else:
-                    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-                    
-                train_accuracies = []
-                stop_indicator = False
-                epoch = 0
-                # Pretrain until convergence condition is met
-                while(not stop_indicator):
-                    if epoch % 5 == 0:
-                        print(f"\tPre-training in epoch {epoch + 1}")
-                    # train and evaluate one epoch
-                    train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
-                    train_loss, train_accuracy = eval_on_dataloader(device, criterion, model, loaders['train_loader'])
-                    
-                    # append train accuracy then check for stop conditions
-                    train_accuracies.append(train_accuracy)
-                    epoch += 1
-                    if train_accuracy >= train_threshold:
-                        print(f"Convergence codition met. Training accuracy > {train_threshold}")
-                        stop_indicator = True
-                    
-                    if len(train_accuracies) >= convergence_epochs:
-                        if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
-                            print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
-                            stop_indicator = True
-                
-                # Load the full dataset and reset loss          
-                loaders = get_loaders(dataset=dataset_name, use_half_train=False)
-                criterion = torch.nn.CrossEntropyLoss()
-                train_accuracies = []
-                stop_indicator = False
-                epoch = 0
-                # train warm-starting model until convergence condition
-                while(not stop_indicator):
-                    if epoch % 5 == 0:
-                        print(f"\t Training in epoch {epoch + 1}")
-                    # train and evaluate one epoch
-                    train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
-                    train_loss, train_accuracy = eval_on_dataloader(device, criterion, model, loaders['train_loader'])
-                    
-                    # append train accuracy and check stop conditions
-                    train_accuracies.append(train_accuracy)
-                    epoch += 1
-                    if train_accuracy >= train_threshold:
-                        print(f"Convergence codition met. Training accuracy > {train_threshold}")
-                        stop_indicator = True
-                    
-                    if len(train_accuracies) >= convergence_epochs:
-                        if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
-                            print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
-                            stop_indicator = True
-
-                # Save final test accuracy
-                test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
-                print(f"\tTest accuracy = {test_accuracy}")
-                model_result[model_name] = test_accuracy
-                
-            # Store test accuracies for the optimizer
-            optimizer_result[optimizer_name] = model_result
-        # Store test accuracies for the dataset
-        dataset_result[dataset_name] = optimizer_result
-    # Store test accuracies for the initialization type
-    overal_result[init_type] = dataset_result
-
-    # Return the results dictionary
-    return overal_result
+    return result
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-The following cell executes the entire experiment and stores the results.
+The ResNet-18 model is trained on the CIFAR-10 dataset using an SGD optimizer and the `train_to_threshold` function. It is trained with warm-start and random initialization.
 :::
 
 ::: {.cell .code}
 ``` python
-# Run the experiment
-overal_result = train_exp2(title='Table1', lr=0.001, convergence_epochs=3, train_threshold=0.99,
-                                convergence_change_threshold=0.002, random_seed=42)
+# train on half data
+_ = train_to_threshold(title='half_cifar10', train_threshold=0.99, use_half_data=True)
+```
+:::
+
+::: {.cell .code}
+``` python
+# Dictionary to save warm-starting results
+warm_start = {}
+
+# train on full data with warm-starting
+warm_start['sgd'] = train_to_threshold(title='warm_cifar10', train_threshold=0.99, checkpoint='experiments/exp2/half_cifar10/resnet18-sgd.pt')
+```
+:::
+
+::: {.cell .code}
+``` python
+# Dictionary to save random initialization results
+random_init = {}
+
+# train on full data with random initialization
+random_init['sgd'] = train_to_threshold(title='random_cifar10', train_threshold=0.99)
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We extend this experiment by training the same model with the Adam optimizer instead of SGD. We add a new parameter `optimizer_name` to select the optimizer for the model.
+:::
+
+::: {.cell .code}
+``` python
+def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False, optimizer_name='adam', convergence_epochs=3,
+                       train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
+    # Create directory in exp with experiment title
+    experiment_dir = os.path.join('experiments/exp2', title)
+    os.makedirs(experiment_dir, exist_ok=True)
+
+    # use gpu if available ( change device id if needed )
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0')
+        print("CUDA Recognized")
+    else:
+        device = torch.device('cpu')
+
+    # Set random seeds for reproducibility
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
+
+    # Get the dataset
+    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
+
+    # Get the model
+    model = models.resnet18(num_classes=10).to(device)
+
+    # Create the optimizer
+    if optimizer_name == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Create the loss function
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # Get model from checkpoint
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint, map_location=device)['model'])
+
+    print(f"Training {'warm-starting' if checkpoint is not None else 'random initialized'} ResNet-18 model with " \
+            f"{optimizer_name.upper()} optimizer on {'50%' if use_half_data else '100%'} of cifar10 dataset")
+
+    # Dictionary to store final outputs
+    result = {}
+    train_accuracies = []
+    stop_indicator = False
+    model_name = 'resnet18'
+    epoch = 0
+    # Train until convergence or stop condition is met
+    while(not stop_indicator):
+        if epoch % 5 == 0:
+            print(f"\t Training in epoch {epoch + 1} \t")
+        # Train for one epoch and get loss and accuracy
+        train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
+
+        # Append training accuracy to list
+        train_accuracies.append(train_accuracy)
+        epoch += 1
+        # Check if training accuracy is above a threshold
+        if train_accuracy >= train_threshold:
+            print(f"Convergence codition met. Training accuracy > {train_threshold}")
+            stop_indicator = True
+
+        # Check if training accuracy has stopped improving for a number of epochs
+        if len(train_accuracies) >= convergence_epochs:
+            if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
+                print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                stop_indicator = True
+
+    # Evaluate on test set and get loss and accuracy
+    test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
+    print(f"\tTest accuracy = {test_accuracy}")
+
+    # Store test accuracy for the model
+    result[model_name] = test_accuracy
+
+    # save the model
+    model_name = model_name+'-'+optimizer_name
+    model_directory =  os.path.join(experiment_dir, f'{model_name}.pt')
+    torch.save({
+        'model': model.state_dict()
+    }, model_directory)
+
+    print(f"Model saved to checkpoint: {model_directory}")
+
+    return result
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We repeat the training of the same models with the Adam optimizer instead of SGD.
+:::
+
+::: {.cell .code}
+``` python
+# train on half data
+_ = train_to_threshold(title='half_cifar10', train_threshold=0.99, optimizer_name='adam', use_half_data=True)
+
+# train on full data with warm-starting but with Adam
+warm_start['adam'] = train_to_threshold(title='warm_cifar10', train_threshold=0.99, optimizer_name='adam',
+                                        checkpoint='experiments/exp2/half_cifar10/resnet18-adam.pt')
+
+# train on full data with random initialization but with Adam
+random_init['adam'] = train_to_threshold(title='random_cifar10', train_threshold=0.99, optimizer_name='adam')
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We also experiment with the MLP model instead of the ResNet. We introduce a parameter `model_name` to select the model for the training.
+:::
+
+::: {.cell .code}
+``` python
+def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False, optimizer_name='adam', model_name='resnet18',
+                       convergence_epochs=3, train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
+    # Create directory in exp with experiment title
+    experiment_dir = os.path.join('experiments/exp2', title)
+    os.makedirs(experiment_dir, exist_ok=True)
+
+    # use gpu if available ( change device id if needed )
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0')
+        print("CUDA Recognized")
+    else:
+        device = torch.device('cpu')
+
+    # Set random seeds for reproducibility
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
+
+    # Get the dataset
+    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
+
+    # Get the model
+    if model_name == 'resnet18':
+        model = models.resnet18(num_classes=10).to(device)
+    else:
+        model = MLP( input_dim = 32 * 32 * 3, num_classes=10).to(device)
+
+    # Create the optimizer
+    if optimizer_name == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Create the loss function
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # Get model from checkpoint
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint, map_location=device)['model'])
+
+    print(f"Training {'warm-starting' if checkpoint is not None else 'random initialized'} {model_name} model with " \
+            f"{optimizer_name.upper()} optimizer on {'50%' if use_half_data else '100%'} of cifar10 dataset")
+
+    # Dictionary to store final outputs
+    result = {}
+    train_accuracies = []
+    stop_indicator = False
+    epoch = 0
+    # Train until convergence or stop condition is met
+    while(not stop_indicator):
+        if epoch % 5 == 0:
+            print(f"\t Training in epoch {epoch + 1} \t")
+        # Train for one epoch and get loss and accuracy
+        train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
+
+        # Append training accuracy to list
+        train_accuracies.append(train_accuracy)
+        epoch += 1
+        # Check if training accuracy is above a threshold
+        if train_accuracy >= train_threshold:
+            print(f"Convergence codition met. Training accuracy > {train_threshold}")
+            stop_indicator = True
+
+        # Check if training accuracy has stopped improving for a number of epochs
+        if len(train_accuracies) >= convergence_epochs:
+            if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
+                print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                stop_indicator = True
+
+    # Evaluate on test set and get loss and accuracy
+    test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
+    print(f"\tTest accuracy = {test_accuracy}")
+
+    # Store test accuracy for the model
+    result[model_name] = test_accuracy
+
+    # save the model
+    model_name = model_name+'-'+optimizer_name
+    model_directory =  os.path.join(experiment_dir, f'{model_name}.pt')
+    torch.save({
+        'model': model.state_dict()
+    }, model_directory)
+
+    print(f"Model saved to checkpoint: {model_directory}")
+
+    return result
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We use warm-starting and the Adam optimizer to train the MLP model in the next cell.
+:::
+
+::: {.cell .code}
+``` python
+# train MLP mode on half data
+train_to_threshold(title='half_cifar10', train_threshold=0.99, optimizer_name='adam', model_name='mlp', use_half_data=True)
+
+# train MLP on full data with warm-starting
+warm_start['adam'].update(train_to_threshold(title='warm_cifar10', train_threshold=0.99, optimizer_name='adam', model_name='mlp',
+                                        checkpoint='experiments/exp2/half_cifar10/mlp-adam.pt'))
+
+# train MLP model on full data with random initialization
+random_init['adam'].update(train_to_threshold(title='random_cifar10', train_threshold=0.99, optimizer_name='adam', model_name='mlp'))
+```
+:::
+
+::: {.cell .markdown}
+***
+
+In the next cell, we train the MLP model with warm-starting and the SGD optimizer.
+:::
+
+::: {.cell .code}
+``` python
+# train MLP model on half data
+train_to_threshold(title='half_cifar10', train_threshold=0.99, optimizer_name='sgd', model_name='mlp', use_half_data=True)
+
+# train MLP on full data with warm-starting and SGD optimizer
+warm_start['sgd'].update(train_to_threshold(title='warm_cifar10', train_threshold=0.99, optimizer_name='sgd', model_name='mlp',
+                                        checkpoint='experiments/exp2/half_cifar10/mlp-sgd.pt'))
+
+# train MLP model on full data with random initialization and SGD optimizer
+random_init['sgd'].update(train_to_threshold(title='random_cifar10', train_threshold=0.99, optimizer_name='sgd', model_name='mlp'))
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We use a dictionary `overal_result` to store the data for creating the table in claim 2.
+:::
+
+::: {.cell .code}
+``` python
+overal_result = {'random': {'cifar10': random_init},
+                 'warm-start': {'cifar10': warm_start}}
+```
+:::
+
+::: {.cell .markdown}
+***
+
+Finaly we extend this to allow using the SVHN and CIFAR-100 datasets by adding a parameter `dataset` to specify the dataset we would like to use.
+:::
+
+::: {.cell .code}
+``` python
+def train_to_threshold(title='warm', dataset='cifar10', lr=0.001, checkpoint=None, use_half_data=False, optimizer_name='adam', model_name='resnet18',
+                       convergence_epochs=3, train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
+    # Create directory in exp with experiment title
+    experiment_dir = os.path.join('experiments/exp2', title)
+    os.makedirs(experiment_dir, exist_ok=True)
+
+    # use gpu if available ( change device id if needed )
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0')
+        print("CUDA Recognized")
+    else:
+        device = torch.device('cpu')
+
+    # Set random seeds for reproducibility
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
+
+    # Get the dataset
+    loaders = get_loaders(dataset=dataset, use_half_train=use_half_data)
+
+    # Define the number of classes
+    num_classes = 10
+    if dataset == 'cifar100':
+        num_classes=100
+
+    # Get the model
+    if model_name == 'resnet18':
+        model = models.resnet18(num_classes=num_classes).to(device)
+    else:
+        model = MLP( input_dim = 32 * 32 * 3, num_classes=num_classes).to(device)
+
+    # Create the optimizer
+    if optimizer_name == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Create the loss function
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # Get model from checkpoint
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint, map_location=device)['model'])
+
+    print(f"Training {'warm-starting' if checkpoint is not None else 'random initialized'} {model_name} model" \
+            f" with {optimizer_name.upper()} optimizer on {'50%' if use_half_data else '100%'} of {dataset} dataset")
+
+    # Dictionary to store final outputs
+    result = {}
+    train_accuracies = []
+    stop_indicator = False
+    epoch = 0
+    # Train until convergence or stop condition is met
+    while(not stop_indicator):
+        if epoch % 5 == 0:
+            print(f"\t Training in epoch {epoch + 1} \t")
+        # Train for one epoch and get loss and accuracy
+        train_loss, train_accuracy = train_one_epoch(device, model, optimizer, criterion, loaders['train_loader'])
+
+        # Append training accuracy to list
+        train_accuracies.append(train_accuracy)
+        epoch += 1
+        # Check if training accuracy is above a threshold
+        if train_accuracy >= train_threshold:
+            print(f"Convergence codition met. Training accuracy > {train_threshold}")
+            stop_indicator = True
+
+        # Check if training accuracy has stopped improving for a number of epochs
+        if len(train_accuracies) >= convergence_epochs:
+            if np.std(train_accuracies[-convergence_epochs:]) < convergence_change_threshold:
+                print(f"\tConvergence codition met. Training accuracy = {train_accuracy} stopped improving")
+                stop_indicator = True
+
+    # Evaluate on test set and get loss and accuracy
+    test_loss, test_accuracy =  eval_on_dataloader(device, criterion, model, loaders['test_loader'])
+    print(f"\tTest accuracy = {test_accuracy}")
+
+    # Store test accuracy for the model
+    result[model_name] = test_accuracy
+
+    # save the model
+    model_name = model_name+'-'+optimizer_name
+    model_directory =  os.path.join(experiment_dir, f'{model_name}.pt')
+    torch.save({
+        'model': model.state_dict()
+    }, model_directory)
+
+    print(f"Model saved to checkpoint: {model_directory}")
+
+    return result
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We repeat all the previous for the CIFAR-100 dataset using the ResNet model with different optimizers.
+:::
+
+::: {.cell .code}
+``` python
+# Reset dictionaries to store data for CIFAR-100
+random_init = {}
+warm_start = {}
+
+# train on half CIFAR-100 data
+train_to_threshold(title='half_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='adam',
+                   model_name='resnet18', use_half_data=True)
+
+# train Resnet model on full CIFAR-100 data with warm-starting and Adam optimizer
+warm_start['adam'] = train_to_threshold(title='warm_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='adam', 
+                                       model_name='resnet18', checkpoint='experiments/exp2/half_cifar100/resnet18-adam.pt')
+
+# train Resnet model on full CIFAR-100 data with random initialization and Adam optimizer
+random_init['adam'] = train_to_threshold(title='random_cifar100', dataset='cifar100', train_threshold=0.99,
+                                            optimizer_name='adam', model_name='resnet18')
+
+# train on half CIFAR-100 data
+train_to_threshold(title='half_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='sgd',
+                   model_name='resnet18', use_half_data=True)
+
+# train Resnet model on full CIFAR-100 data with warm-starting and SGD optimizer
+warm_start['sgd'] = train_to_threshold(title='warm_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='sgd',
+                                      model_name='resnet18', checkpoint='experiments/exp2/half_cifar100/resnet18-sgd.pt')
+
+# train Resnet model on full CIFAR-100 data with random initialization and SGD optimizer
+random_init['sgd'] = train_to_threshold(title='random_cifar100', dataset='cifar100', train_threshold=0.99,
+                                       optimizer_name='sgd', model_name='resnet18')
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We repeat all the previous for the CIFAR-100 dataset using the MLP model with different optimizers.
+:::
+
+::: {.cell .code}
+``` python
+# train on half CIFAR-100 data
+train_to_threshold(title='half_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='adam', model_name='mlp', use_half_data=True)
+
+# train MLP model on full CIFAR-100 data with warm-starting and Adam optimizer
+warm_start['adam'].update(train_to_threshold(title='warm_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='adam',
+                                             model_name='mlp', checkpoint='experiments/exp2/half_cifar100/mlp-adam.pt'))
+
+# train MLP model on full CIFAR-100 data with random initialization and Adam optimizer
+random_init['adam'].update(train_to_threshold(title='random_cifar100', dataset='cifar100',train_threshold=0.99,
+                                              optimizer_name='adam', model_name='mlp'))
+
+# train on half CIFAR-100 data
+train_to_threshold(title='half_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='sgd', model_name='mlp', use_half_data=True)
+
+# train MLP model on full CIFAR-100 data with warm-starting and SGD optimizer
+warm_start['sgd'].update(train_to_threshold(title='warm_cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='sgd',
+                                            model_name='mlp', checkpoint='experiments/exp2/half_cifar100/mlp-sgd.pt'))
+
+# train MLP model on full CIFAR-100 data with random initialization and SGD optimizer
+random_init['sgd'].update(train_to_threshold(title='random_cifar100', dataset='cifar100', train_threshold=0.99,
+                                             optimizer_name='sgd', model_name='mlp'))
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We store the results of the CIFAR-100 dataset in the `overal_result` dictionary.
+:::
+
+::: {.cell .code}
+``` python
+overal_result['random']['cifar100'] = random_init
+overal_result['warm-start']['cifar100'] = warm_start
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We create the previous for the SVHN dataset using the ResNet model with different optimizers.
+:::
+
+::: {.cell .code}
+``` python
+# Reset the dictionaries to hold the SVHN dataset results
+random_init = {}
+warm_start = {}
+
+# train on half SVHN data
+train_to_threshold(title='half_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='adam', model_name='resnet18', use_half_data=True)
+
+# train ResNet model on full SVHN data with warm-starting and Adam optimizer
+warm_start['adam'] =train_to_threshold(title='warm_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='adam', model_name='resnet18',
+                                        checkpoint='experiments/exp2/half_svhn/resnet18-adam.pt')
+
+# train ResNet model on full SVHN data with random initialization and Adam optimizer
+random_init['adam'] =train_to_threshold(title='random_svhn', dataset='svhn', train_threshold=0.99,
+                                        optimizer_name='adam', model_name='resnet18')
+
+# train on half SVHN data
+train_to_threshold(title='half_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='sgd', model_name='resnet18', use_half_data=True)
+
+# train ResNet model on full SVHN data with warm-starting and SGD optimizer
+warm_start['sgd'] =train_to_threshold(title='warm_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='sgd', model_name='resnet18',
+                                        checkpoint='experiments/exp2/half_svhn/resnet18-sgd.pt')
+
+# train ResNet model on full SVHN data with random initialization and SGD optimizer
+random_init['sgd'] =train_to_threshold(title='random_svhn', dataset='svhn', train_threshold=0.99,
+                                       optimizer_name='sgd', model_name='resnet18')
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We create the previous for the SVHN dataset using the MLP model with different optimizers.
+:::
+
+::: {.cell .code}
+``` python
+# train on half SVHN data
+train_to_threshold(title='half_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='adam', model_name='mlp', use_half_data=True)
+
+# train MLP model on full SVHN data with warm-starting and Adam optimizer
+warm_start['adam'].update(train_to_threshold(title='warm_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='adam', model_name='mlp',
+                                        checkpoint='experiments/exp2/half_svhn/mlp-adam.pt'))
+
+# train MLP model on full SVHN data with random initialization and Adam optimizer
+random_init['adam'].update(train_to_threshold(title='random_svhn', dataset='svhn', train_threshold=0.99,
+                                              optimizer_name='adam', model_name='mlp'))
+
+# train on half SVHN data
+train_to_threshold(title='half_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='sgd', model_name='mlp', use_half_data=True)
+
+# train MLP model on full SVHN data with warm-starting and SGD optimizer
+warm_start['sgd'].update(train_to_threshold(title='warm_svhn', dataset='svhn', train_threshold=0.99, optimizer_name='sgd', model_name='mlp',
+                                        checkpoint='experiments/exp2/half_svhn/mlp-adam.pt'))
+
+# train MLP model on full SVHN data with random initialization and SGD optimizer
+random_init['sgd'].update(train_to_threshold(title='random_svhn', dataset='svhn', train_threshold=0.99,
+                                             optimizer_name='sgd', model_name='mlp'))
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We save the results of the SVHN dataset in the `overal_result` dictionary and save it in `overal_result.json` to be loaded for table creation.
+:::
+
+::: {.cell .code}
+``` python
+# Store the results in the dictionary
+overal_result['random']['svhn'] = random_init
+overal_result['warm-start']['svhn'] = warm_start
 
 # Save the outputs in a json file
 with open("experiments/exp2/overal_result.json", "w") as f:
@@ -995,56 +1396,40 @@ for dataset_name in ["cifar10", "cifar100", "svhn"]:
 
 ::: {.cell .code}
 ``` python
+import pandas as pd
+import json
+
 # Read from json file
 with open("experiments/exp2/overal_result.json", "r") as f:
     overal_result = json.load(f)
-
-# Choose table colors
-colors = [["lightgray"] * 5, ["white"] * 5, ["lightgray"] * 5, ["white"] * 5]
 
 # Define table headers
 headers = ["Model-Optimizer", "Random Accuracy", "Warm-start Accuracy", "Difference"]
 
 # Loop over the different datasets
 for dataset_name in ["cifar10", "cifar100", "svhn"]:
-    # new empty row
+    # row list
     rows = []
-    # Loop over models and optimizers
+    # Loop over optimizers and models
     for model_name in ["mlp", "resnet18"]:
         for optimizer_name in ["adam", "sgd"]:
             # Get the accuracy values for random and warm-start models
             random_accuracy = round(overal_result["random"][dataset_name][optimizer_name][model_name], 2)
             warm_start_accuracy = round(overal_result["warm-start"][dataset_name][optimizer_name][model_name], 2)
-            
+
             # Calculate the difference between accuracies
             difference = random_accuracy - warm_start_accuracy
 
-            # Append a row with the values to the list, formatted as strings
-            rows.append([model_name+'-'+optimizer_name, random_accuracy, warm_start_accuracy, difference])
+            # Append a row with the values to the list
+            rows.append ([model_name+'-'+optimizer_name, random_accuracy, warm_start_accuracy, difference])
 
-    # Create a new figure and axes
-    fig, ax = plt.subplots ()
-    # Hide the axes and the frame
-    ax.axis('off')
-    ax.axis('tight')
+    # Create a pandas DataFrame from the rows list
+    df = pd.DataFrame(rows, columns=headers)
 
-    # Create a table with the rows and column labels, and set the colors
-    table = ax.table(cellText=rows, colLabels=headers, loc='center', cellColours=colors)
-
-    # Set the font size
-    table.auto_set_font_size(False)
-    table.set_fontsize(12)
-    table.auto_set_column_width(col=list(range(len(headers))))
-    # Set text alignment
-    for key, cell in table.get_celld ().items ():
-        cell.set_text_props(ha='center', va='center')
-    
-    # Adjust the layout of the figure to fit the table
-    fig.tight_layout()
-    plt.show()
-    
-    # Save the figure as a pdf file with the dataset name
-    fig.savefig(f"experiments/exp2/table1_{dataset_name}.pdf", bbox_inches='tight')
+    # Print the table using pandas style with grid format
+    print(f"Table for {dataset_name.upper()}")
+    display(df.style.set_table_styles([{'selector': 'th', 'props': [('border', '1px solid black')]}, {'selector': 'td', 'props': [('border', '1px solid black')]}]))
+    print()
 ```
 :::
 
