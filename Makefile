@@ -1,7 +1,9 @@
-SOURCES := warm_starting_nn_training.md
-NBS := $(SOURCES:.md=.ipynb)
+# source with wildcard
+SOURCES := $(wildcard markdown/*.md)
+NBS := $(patsubst markdown/%.md, notebooks/%.ipynb, $(SOURCES))
 
-%.ipynb: %.md
+# rule to run
+notebooks/%.ipynb: markdown/%.md
 	pandoc --embed-resources --standalone --wrap=none  $< -o $@
 
 all: $(NBS)
