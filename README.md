@@ -1,6 +1,6 @@
 # [Re] Warm-Starting Neural Network Training
 
-This project is part of the UCSC OSPO summer of reproducibility fellowship and aims to create an interactive notebook that can be used to teach undergraduate or graduate students different levels of reproducibility in machine learning education.
+This project is part of the [UCSC OSPO](https://ospo.ucsc.edu/) summer of reproducibility fellowship and aims to create an interactive notebook that can be used to teach undergraduate or graduate students different levels of reproducibility in machine learning education.
 
 The project is based on the paper "[On Warm-Starting Neural Network Training](https://arxiv.org/abs/1910.08475)" by Jordan T. Ash and Ryan P. Adams, which was successfully replicated and published on [ReScience C](https://rescience.github.io/bibliography/Kireev_2021.html).
 
@@ -25,6 +25,12 @@ To run the notebook, you will need to install the following dependencies:
 - NumPy
 - Matplotlib
 - Jupyter Notebook or Jupyter Lab
+- tensorboard
+- tensorboardX
+- torch
+- torchvision
+- scipy
+- tensorflow
 
 You can install them using pip or conda, for example:
 
