@@ -1,6 +1,6 @@
 ::: {.cell .markdown}
 ## Experiment 2:
-
+ 
 In this experiment, we compare two methods of weight initialization: warm-starting and random initialization, for two models: **ResNet18** and **3-layer MLP** with tanh activation. We also compare two optimizers: **SGD** and **Adam**, for updating the weights based on the gradients. We use three image classification datasets:  **CIFAR-10**, **CIFAR-100** and **SVHN**, and report the test accuracy of each model on each dataset. All models are trained using a mini-batch size of 128 and a learning rate of 0.001.
 
 We use the same components as in experiment one: the `get_loaders` function to get the required dataset's train and test loaders, the [**ResNet18**](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html) model from `torchvision.models`, and the [**SGD**](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) optimizer from `torch.optim`. We also introduce some new components:
@@ -187,7 +187,7 @@ The following cell defines two functions that perform one epoch of training or e
 def get_accuracy(logit, true_y):
     pred_y = torch.argmax(logit, dim=1)
     return (pred_y == true_y).float().mean()
-    
+
 def eval_on_dataloader(device, criterion, model, dataloader):
     """
     Evaluate the model on a given data loader and return the average loss and accuracy.

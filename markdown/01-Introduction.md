@@ -4,7 +4,7 @@
 The paper *"On Warm-Starting Neural Network Training"* by Jordan T. Ash and Ryan P. Adams addresses a common challenge in machine learning scenarios where new data arrives periodically and requires updating the existing neural network model. The paper investigates the trade-offs between two retraining strategies: 
 
 - Cold-starting 
-- Warm-starting.
+- Warm-starting
 :::
 
 ::: {.cell .markdown}

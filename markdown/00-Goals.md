@@ -4,7 +4,7 @@
 The paper is available on [arXiv](https://arxiv.org/abs/1910.08475). In creating the interactive material for this notebook, we utilized the code from this reproducibility challenge: [Re: Warm-Starting Neural Network Training](https://rescience.github.io/bibliography/Kireev_2021.html).
 :::
 
-::: {.cell .markdown}
+::: {.cell .markdown} 
 ## Goals
 
 The main purpose of this notebook is to:

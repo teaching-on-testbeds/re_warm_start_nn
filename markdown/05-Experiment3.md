@@ -3,7 +3,7 @@
 In this experiment we conduct an experiment to compare the effects of random initialization and warm-starting on online training, which is a common scenario in real time setting. We divide the **CIFAR-10** dataset into splits of 1000 samples each, and train a **ResNet18** model on each split until it reaches *99% training accuracy*. We incrementally add more splits to the training data until we exhaust the whole dataset. We record the training time and test accuracy for each split and analyze the differences between the two initialization methods.
 
 We reuse the same components from the previous experiment, except for the `get_cifar10_online_loaders` function, which returns a list train loaders with a variable number of samples. We also use the ResNet18 model from torchvision and the Adam optimizer from `torch.optim`, with cross entropy loss as the loss function.
-:::
+::: 
 
 ::: {.cell .markdown}
 ***
