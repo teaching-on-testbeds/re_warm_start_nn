@@ -1,6 +1,5 @@
-
 ::: {.cell .markdown}
-### Experiment 3:
+## Experiment 3:
 In this experiment we conduct an experiment to compare the effects of random initialization and warm-starting on online training, which is a common scenario in real time setting. We divide the **CIFAR-10** dataset into splits of 1000 samples each, and train a **ResNet18** model on each split until it reaches *99% training accuracy*. We incrementally add more splits to the training data until we exhaust the whole dataset. We record the training time and test accuracy for each split and analyze the differences between the two initialization methods.
 
 We reuse the same components from the previous experiment, except for the `get_cifar10_online_loaders` function, which returns a list train loaders with a variable number of samples. We also use the ResNet18 model from torchvision and the Adam optimizer from `torch.optim`, with cross entropy loss as the loss function.
@@ -14,13 +13,9 @@ We import the required packages as before.
 ::: {.cell .code}
 ``` python
 import os
-import glob
 import json
 import torch
 import numpy as np
-import pandas as pd
-import torch.nn as nn
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.utils.data import random_split, ConcatDataset
 from torchvision import transforms, datasets, models
@@ -95,6 +90,105 @@ def get_cifar10_online_loaders(split_size):
     return {"train_loaders": train_loaders,
             "test_loader": test_loader,
             "val_loader": val_loader}
+```
+:::
+
+::: {.cell .markdown}
+***
+We use some functions that were defined in previous experiments.
+:::
+
+::: {.cell .code}
+```python
+# Function takes predictions and true values to return accuracies
+def get_accuracy(logit, true_y):
+    pred_y = torch.argmax(logit, dim=1)
+    return (pred_y == true_y).float().mean()
+
+def eval_on_dataloader(device, criterion, model, dataloader):
+    """
+    Evaluate the model on a given data loader and return the average loss and accuracy.
+
+    Parameters:
+    device: the device (cpu or gpu) to use for computation
+    criterion: the loss function to use
+    model: the model to evaluate
+    dataloader: the data loader to iterate over the data
+
+    Returns:
+    loss: the average loss over the data loader
+    accuracy: the average accuracy over the data loader
+    """
+    # Lists to store accuracy and loss
+    accuracies = []
+    losses = []
+    
+    for batch_idx, (data_x, data_y) in enumerate(dataloader): 
+        data_x = data_x.to(device) 
+        data_y = data_y.to(device)
+        
+        # get the model output for the input data
+        model_y = model(data_x) 
+        
+        # compute the loss and accuracy
+        loss = criterion(model_y, data_y)
+        batch_accuracy = get_accuracy(model_y, data_y)
+        
+        # append accuracy and loss to lists
+        accuracies.append(batch_accuracy.item()) 
+        losses.append(loss.item())
+
+    # compute average loss and accuracy
+    loss = np.mean(losses) 
+    accuracy = np.mean(accuracies) 
+    return loss, accuracy 
+
+
+def train_one_epoch(device, model, optimizer, criterion, dataloader):
+    """
+    Train the model for one epoch on a given training data loader and return the average loss and accuracy.
+
+    Parameters:
+    device: the device (cpu or gpu) to use for computation
+    model: the model to train
+    optimizer: the optimizer to use for updating the weights
+    criterion: the loss function to use
+    train_dataloader: the training data loader to iterate over the training data
+
+    Returns:
+    train_loss: the average loss over the training data loader
+    train_accuracy: the average accuracy over the training data loader
+    """
+    # Lists to store accuracy and loss
+    accuracies = []
+    losses = [] 
+    
+    for batch_idx, (data_x, data_y) in enumerate(dataloader):
+        data_x = data_x.to(device) 
+        data_y = data_y.to(device) 
+        
+         # reset the gradients of the optimizer
+        optimizer.zero_grad()
+        
+        # get the model output for the input data
+        model_y = model(data_x)
+        
+        # compute the loss and accuracy
+        loss = criterion(model_y, data_y)
+        batch_accuracy = get_accuracy(model_y, data_y)
+        
+        # compute the gradients and update model parameters
+        loss.backward()
+        optimizer.step()
+
+        # append accuracy and loss to lists
+        accuracies.append(batch_accuracy.item()) 
+        losses.append(loss.item())
+
+    # compute average loss and accuracy
+    loss = np.mean(losses) 
+    accuracy = np.mean(accuracies) 
+    return loss, accuracy 
 ```
 :::
 
@@ -274,7 +368,7 @@ plt.savefig(f"experiments/exp3/cifar10-99.png")
 :::
 
 ::: {.cell .markdown}
-#### Things to try:
+### Things to try:
 In this experiment you can:
 
 - Change the learning rate and observe what effects it have on the experiment.

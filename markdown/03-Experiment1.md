@@ -1,5 +1,5 @@
 ::: {.cell .markdown}
-## Experiments
+# Experiments
 
 In this section, we will test the claims made by the authors. You will come across sections in the code marked with `#TODO`, where you need to fill an argument as described in the experiment description.
 
@@ -9,7 +9,7 @@ In this section, we will test the claims made by the authors. You will come acro
 :::
 
 ::: {.cell .markdown}
-### Experiment 1:
+## Experiment 1:
 In this experiment we want to compare two ways of training a ResNet-18 model, which is a type of deep neural network that can classify images. The CIFAR-10 dataset is a collection of 60,000 color images of 10 classes, such as airplanes, cars, and dogs. The experiment splits the dataset into two parts: a training set and a test set. The training set is used to update the model weights, and the test set is used to evaluate the model performance.
 
 The experiment uses two models: a warm-starting model and a randomly initialized model. The warm-starting model starts with some pre-trained weights that are learned training on 50% of the training data for 350 epochs. The randomly initialized model starts with random weights that are not learned from any data. Both models train on the full training data for 350 epochs, where one epoch means one pass over the entire data. The experiment will measure the accuracy of the models on both the training and test sets, which is the percentage of correctly classified images.
@@ -27,15 +27,12 @@ To run this experiment we will need to:
 ::: {.cell .code}
 ``` python
 import os
-import glob
 import json
 import torch
 import numpy as np
 import pandas as pd
-import torch.nn as nn
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from torch.utils.data import random_split, ConcatDataset
+from torch.utils.data import random_split
 from torchvision import transforms, datasets, models
 ```
 :::
@@ -389,7 +386,7 @@ plt.savefig("experiments/exp1/fig1_test.png")
 :::
 
 ::: {.cell .markdown}
-#### Things to try:
+### Things to try:
 This experiment uses a specific model and optimizer. Exploring different combinations might be beneficial but costly in terms of computation. A simple way to further examine the first claim is:
 
 - Use a lower learning rate since the model achieves 99% training accuracy quickly

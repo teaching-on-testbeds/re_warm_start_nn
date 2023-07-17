@@ -1,6 +1,6 @@
 ::: {.cell .markdown}
-## Primary Claims:
-The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to conduct the right experiment.
+# Primary Claims:
+The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to understand the corresponding experiment.
 
 ***
 :::
@@ -21,7 +21,7 @@ The original paper makes several claims that can be classified as either quantit
 :::
 
 ::: {.cell .markdown}
-### Claim 1: Warm-starting neural network training may result in lower validation accuracy than random initialized models, despite having similar final training accuracy.
+## Claim 1: Warm-starting neural network training may result in lower validation accuracy than random initialized models, despite having similar final training accuracy.
 ![Figure](assets/claim1.png) 
 *We compare a warm-starting ResNet-18 model (Blue) and a randomly initialized ResNet-18 model (Orange) on the CIFAR-10 dataset. The warm-starting model first trains on 50% of the data for 350 epochs, then both models train on the full dataset for another 350 epochs. The figure shows that both models overfit the training data, but the randomly initialized model achieves higher test accuracy.*
 
@@ -36,8 +36,7 @@ The original paper makes several claims that can be classified as either quantit
 :::
 
 ::: {.cell .markdown}
-### Claim 2: Warm-started models had worse test accuracies than randomly initialized models on CIFAR-10, SVHN, and CIFAR-100, using ResNet-18 and MLP.
-[comment1]: <> (![Figure2](assets/claim3.png))
+## Claim 2: Warm-started models had worse test accuracies than randomly initialized models on CIFAR-10, SVHN, and CIFAR-100, using ResNet-18 and MLP.
 
 | CIFAR-10    | ResNet-SGD | ResNet-Adam | MLP-SGD | MLP-Adam | CIFAR-100   | ResNet-SGD | ResNet-Adam | MLP-SGD | MLP-Adam |    SVHN     | ResNet-SGD | ResNet-Adam | MLP-SGD | MLP-Adam |
 | :---------: | :--------: | :---------: |:------: |:-------: | :---------: | :--------: | :---------: |:------: |:-------: | :---------: | :--------: | :---------: |:------: |:-------: |
@@ -73,8 +72,8 @@ The original paper makes several claims that can be classified as either quantit
 :::
 
 ::: {.cell .markdown}
-### Claim 3: Warm-starting neural networks saves resources and time, but lowers accuracy by 10% compared to fresh models.
-![Figure1](assets/claim2.png)\
+## Claim 3: Warm-starting neural networks saves resources and time, but lowers accuracy by 10% compared to fresh models.
+![Figure1](assets/claim3.png)\
 *The data is divided into 1000-sample batches for online training. The warm-started (Blue) and randomly initialized (Orange) models train until 99% training accuracy. The plots show how training time and test accuracy vary with the number of samples.*
 
 - Excerpt:
@@ -88,7 +87,7 @@ The original paper makes several claims that can be classified as either quantit
 :::
 
 ::: {.cell .markdown}
-**Based on your understanding of the previous claims, answer the following question.**
+### Based on your understanding of the previous claims, answer the following question.
 :::
 
 ::: {.cell .markdown}

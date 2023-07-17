@@ -58,7 +58,9 @@ jupyter notebook
 
 Then, open the notebook file `00-Goals.ipynb` in the notebooks folder and follow the instructions.
 
-Alternatively, you can use Google Colab to run the notebook online without installing anything. Just click on this link: [Open in Colab](https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/notebooks/00-Goals.ipynb)
+Alternatively, you can use Google Colab to run the notebook online without installing anything. Just click on this link: <a target="_blank" href="https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/notebooks/00-Goals.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
 ## License
 

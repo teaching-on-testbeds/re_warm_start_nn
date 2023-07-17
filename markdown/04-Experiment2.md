@@ -1,5 +1,5 @@
 ::: {.cell .markdown}
-### Experiment 2:
+## Experiment 2:
 
 In this experiment, we compare two methods of weight initialization: warm-starting and random initialization, for two models: **ResNet18** and **3-layer MLP** with tanh activation. We also compare two optimizers: **SGD** and **Adam**, for updating the weights based on the gradients. We use three image classification datasets:  **CIFAR-10**, **CIFAR-100** and **SVHN**, and report the test accuracy of each model on each dataset. All models are trained using a mini-batch size of 128 and a learning rate of 0.001.
 
@@ -20,15 +20,13 @@ We import the required packages as before.
 ::: {.cell .code}
 ``` python
 import os
-import glob
 import json
 import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from torch.utils.data import random_split, ConcatDataset
+from torch.utils.data import random_split
 from torchvision import transforms, datasets, models
 ```
 :::
@@ -185,6 +183,11 @@ The following cell defines two functions that perform one epoch of training or e
 
 ::: {.cell .code}
 ``` python
+# Function takes predictions and true values to return accuracies
+def get_accuracy(logit, true_y):
+    pred_y = torch.argmax(logit, dim=1)
+    return (pred_y == true_y).float().mean()
+    
 def eval_on_dataloader(device, criterion, model, dataloader):
     """
     Evaluate the model on a given data loader and return the average loss and accuracy.
@@ -1016,7 +1019,7 @@ display(df.style.set_properties(**{'text-align': 'center', 'border': '1px solid 
 :::
 
 ::: {.cell .markdown}
-#### Things to try:
+### Things to try:
 In this experiment you can:
 
 - Change the learning rate by setting `lr=0.0001` as an argument in the `train_to_threshold` function
