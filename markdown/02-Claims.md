@@ -1,42 +1,33 @@
 ::: {.cell .markdown}
-# Primary Claims:
-The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to understand the corresponding experiment.
+# Primary Claims ☑️:
+
+The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to understand the corresponding experiment. Intuitively, warm-starting should be faster and more effective than cold-starting, since it leverages the previous knowledge of the model. However, the paper shows that warm-starting often leads to worse generalization performance than cold-starting, even though the final training losses are similar.
+
+The paper conducts several comprehensive experiments to compare the performance of warm-starting and cold-starting, demonstrating the trade-off between generalization and training time. They also vary the models, optimizers, and datasets used in the experiments to validate their findings.
+
+The paper contributes to the understanding of how to efficiently utilize deep learning resources in dynamic environments, where data is constantly changing and models need to be updated frequently. The paper also provides some insights into the optimization landscape of neural networks, and how different initialization strategies affect the learning dynamics.
 
 ***
 :::
 
 ::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> Which model do you expect to have a better generalization performance (Test accuracy): <br>
-    <p style="display:inline-block;margin-top:0.5em;margin-left: 2em; color:crimson;font-size: 16px;">
-        1- Model that uses the weights from a previous model trained on a subset of the data (Warm-starting). <br>
-        2- Model that starts with random weights (Cold-starting). 
-    </p>
-</p>
-:::
+## Claim 1: Warm-starting neural network training may result in lower test accuracy than random initialized models, despite having similar final training accuracy. 
 
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
+The authors support their claim by comparing the test accuracy of two models trained with the two initialization strategies for **350** epochs each. The difference in generalization between the warm-starting model and the randomly initialized model that the authors trained is provided in the figure below.
+![](assets/claim1.png) 
+*Figure1: Model trained on half the data is represented by blue line from 0 to 350 epochs. Warm-starting is the blue line from 350-700 model while Random initialized model is the orange line.*
 
-***
-:::
+We will conduct an experiment that compares the two initialization strategies using the CIFAR-10 dataset and a ResNet-18 model. The warm-starting model is first trained on half of the data for 350 epochs, then both models are trained on the full data for another 350 epochs. We verify the overall qualitative claim by measuring the generalization gap between the warm-starting and the randomly initialized model.
 
-::: {.cell .markdown}
-## Claim 1: Warm-starting neural network training may result in lower validation accuracy than random initialized models, despite having similar final training accuracy. 
-![Figure](assets/claim1.png) 
-*We compare a warm-starting ResNet-18 model (Blue) and a randomly initialized ResNet-18 model (Orange) on the CIFAR-10 dataset. The warm-starting model first trains on 50% of the data for 350 epochs, then both models train on the full dataset for another 350 epochs. The figure shows that both models overfit the training data, but the randomly initialized model achieves higher test accuracy.*
-
-- Excerpt: 
-
-> "However, warm-starting seems to hurt generalization in deep neural networks. This is particularly troubling because warm-starting does not damage training accuracy."
-
-- Type: This claim is qualitative because it states that the warm-start model has worse generalization performance than the fresh-start model, without stating a clear numerical evidence.
-- Experiment: A possible way to evaluate this claim is to use some unseen validation data and compare the performance of the two models using different metrics, such as accuracy, precision, recall, or others. You can also try different model architectures and datasets to test the claim’s robustness.
+We also compare our figure with figure1 that the authors provided to verify the quantitative claim.
 
 ***
 :::
 
 ::: {.cell .markdown}
-## Claim 2: Warm-started models had worse test accuracies than randomly initialized models on CIFAR-10, SVHN, and CIFAR-100, using ResNet-18 and MLP.
+## Claim 2: The test accuracy of the warm-started model is lower than that of the randomly initialized model across various datasets, optimizers and model architectures.
+
+The authors support their claim using different model architectures and datasets. They train these models with SGD and Adam optimizers until they reach 99% training accuracy or stop improving for a certain number of epochs. Their results are presented in the table below.
 
 | CIFAR-10    | ResNet-SGD | ResNet-Adam | MLP-SGD | MLP-Adam | CIFAR-100   | ResNet-SGD | ResNet-Adam | MLP-SGD | MLP-Adam |    SVHN     | ResNet-SGD | ResNet-Adam | MLP-SGD | MLP-Adam |
 | :---------: | :--------: | :---------: |:------: |:-------: | :---------: | :--------: | :---------: |:------: |:-------: | :---------: | :--------: | :---------: |:------: |:-------: |
@@ -45,61 +36,29 @@ The original paper makes several claims that can be classified as either quantit
 | Difference  |      4.5   |     3.6     |    1.6  |   3.3    |   |    2.7     |     6.4     |    0.9  |  1.7     |   |      1.9   |    0.1      |   1.1   |    7.3   |
 
 
-- Excerpt: 
+To test the qualitative claim, we will train ResNet-18 and MLP models on CIFAR-10, CIFAR-100 and SVHN dataset using SGD and Adam optimizers. We stop the training when the models reach 99% training accuracy and measure their test accuracy to examine the generalization gap as claimed by the authors.
 
-> "Our results (Table 1) indicate that generalization performance is damaged consistently and significantly for both ResNets and MLPs. This effect is more dramatic for CIFAR-10, which is considered relatively challenging to model (requiring, e.g., data augmentation), than for SVHN, which is considered easier."
-
-- Type: This is a quantitative claim, as it uses numerical values to compare the performance of different models on different datasets.
-- Experiment: To verify this claim, you will need to follow the authors’ details and train the models mentioned. Then, you will need to compare their test accuracies. However, some of the accuracy differences are very small, especially for the SVHN dataset. Therefore, reproducing these results may be difficult without the authors’ hyperparameters.
+To verify the quantitative claim, we compare our numerical results with the previous table.
 
 ***
 :::
 
 ::: {.cell .markdown}
-<p style="color: darkblue; font-size: 16px;"> In most cases it is a reasonable strategy to warm-start the model and potentially achieve quicker convergence. As it would be inefficient to discard the old model that has already learned something.</p>
+## Claim 3: Warm-starting neural networks saves resources and time, but lowers test accuracy compared to random initialized models.
+
+To support their claim, the authors conduct an online learning experiment. They train a model on a split dataset that starts with 1000 samples and grows by 1000 new samples at each iteration. They stop the training when the model achieves *99%* training accuracy and record the test accuracy and training time. They conduct this experiment for warm-starting and random initialization at each iteration. Their results are shown in the figure below.
+
+![](assets/claim3.png)\
+
+To evaluate the overall qualitative claim we conduct an online learning experiment. We use a ResNet-18 model on splited CIFAR-10 dataset. The dataset start with 1000 samples and is updated with 1000 new samples of data at each iteration. We train the model until it reaches 99% training accuracy and measure the test accuracy and training time.
+
+We also compare the our results with the figure to verify the quantitative claim.
 
 ***
 :::
 
 ::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> Do you think warm-starting models will take more or less training time than random initialized models?</p>
-:::
+The paper proposes more claims but we will focus on the mentioned claims. The other claims include a solution to the generalization gap due to warm-starting.
 
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
-
-***
-:::
-
-::: {.cell .markdown}
-## Claim 3: Warm-starting neural networks saves resources and time, but lowers accuracy by 10% compared to fresh models.
-![Figure1](assets/claim3.png)\
-*The data is divided into 1000-sample batches for online training. The warm-started (Blue) and randomly initialized (Orange) models train until 99% training accuracy. The plots show how training time and test accuracy vary with the number of samples.*
-
-- Excerpt:
-
-> “Nevertheless, it is highly desirable to be able to warm-start neural network training, as it would dramatically reduce the resource usage associated with the construction of performant deep learning systems.”
-
-- Type: This claim is quantitative because it compares relation between the training time and mechanism used for initialization of weights. The figure also shows that there is more than a 10% difference in test accuracy given a certain training accuracy threshold ( 99% ).
-- Experiment: A possible way to test this claim is to run an online training experiment with model; one of them should initialized using the old version and the other with random initialization each time and compare there test accuracies at the end.
-
-***
-:::
-
-::: {.cell .markdown}
-### Based on your understanding of the previous claims, answer the following question.
-:::
-
-::: {.cell .markdown}
-<p style="color: crimson;font-size: 16px;"> You have a trained model for a classification project. The dataset has 10,000 new samples. Your team wants to use the new data. One option is to retrain the model from scratch. Another option is to warm-start the model with the current weights. Which option do you prefer? Give a brief reason for your choice. </p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
-
-***
-:::
-
-::: {.cell .markdown}
-If you are using colab click on this link to go to the next notebook: [Open in Colab](https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/notebooks/03-Experiment1.ipynb)
+**Can you identify one of these claims and provide the experiment they did to support their claim?** 🧐
 :::

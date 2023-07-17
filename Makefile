@@ -4,7 +4,7 @@ NBS := $(patsubst markdown/%.md, notebooks/%.ipynb, $(SOURCES))
 
 # rule to run
 notebooks/%.ipynb: markdown/%.md
-	pandoc --embed-resources --standalone --wrap=none  $< -o $@
+	pandoc --resource-path=assets/ --embed-resources --standalone --wrap=none  $< -o $@
 
 all: $(NBS)
 

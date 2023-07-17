@@ -27,7 +27,6 @@ To run the notebook, you will need to install the following dependencies:
 - Jupyter Notebook or Jupyter Lab
 - torch
 - torchvision
-- tensorflow
 
 You can install them using pip or conda, for example:
 
