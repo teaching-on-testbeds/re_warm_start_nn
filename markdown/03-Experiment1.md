@@ -1,27 +1,23 @@
 ::: {.cell .markdown}
 # Experiments
 
-In this section, we will test the claims made by the authors. You will come across sections in the code marked with `#TODO`, where you need to fill an argument as described in the experiment description.
-
-<p style="color: crimson;font-size: 16px;"> Note: The parameter values given in the paper are specified in the description of each experiment. Otherwise, we need to assume them.</p>
+In this section, we will evaluate the claims made by the authors. You should already know the general steps for each experiment from the previous section. We will now implement these experiments following the author description of each experiment and try to identify what was clear and what was vague due to incomplete information from the authors.
 
 ***
 :::
 
 ::: {.cell .markdown}
 ## Experiment 1:
-In this experiment we want to compare two ways of training a ResNet-18 model, which is a type of deep neural network that can classify images. The CIFAR-10 dataset is a collection of 60,000 color images of 10 classes, such as airplanes, cars, and dogs. The experiment splits the dataset into two parts: a training set and a test set. The training set is used to update the model weights, and the test set is used to evaluate the model performance.
+This experiment will test the claim that *"Warm-starting neural network training can lead to lower test accuracy than random initialized models, even if they have similar final training accuracy"*. We anticipate that there will be a generalization gap between the two models trained with the two initialization methods.
 
-The experiment uses two models: a warm-starting model and a randomly initialized model. The warm-starting model starts with some pre-trained weights that are learned training on 50% of the training data for 350 epochs. The randomly initialized model starts with random weights that are not learned from any data. Both models train on the full training data for 350 epochs, where one epoch means one pass over the entire data. The experiment will measure the accuracy of the models on both the training and test sets, which is the percentage of correctly classified images.
+We compare two ways of training a ResNet-18 model, which is a type of deep neural network that can classify images. The CIFAR-10 dataset is a collection of 60,000 color images of 10 classes, such as airplanes, cars, and dogs. The experiment splits the dataset into two parts: a training set and a test set. The training set is used to update the model weights, and the test set is used to evaluate the model performance.
 
-To run this experiment we will need to:
+The experiment uses two models: 
 
-1. Create `get_loaders` function to load the CIFAR-10 dataset and split it into training and test sets.
-2. Define a function that takes a model, a data loader, an optimizer, and a loss function, and trains the model for a given number of epochs, saving the model weights after each epoch.
-3. Create a ResNet-18 model and train it for 350 epochs on 50% of the training data, using stochastic gradient descent as the optimizer and cross entropy loss as the loss function. Save the final model weights as `half_cifar.pt`.
-4. Create another ResNet-18 model and load the weights from `half_cifar.pt`. Train this model for another 350 epochs on the full training data, using the same optimizer and loss function. Save the final model weights as `warm_start_full.pt`.
-5. Create a third ResNet-18 model with random weights. Train this model for 350 epochs on the full training data, using the same optimizer and loss function. Save the final model weights as `random_full.pt`.
-6. Evaluate the test accuracy of all three models using the test data loader. Plot the accuracy curves of the models over time. Compare the results with those reported in the paper and analyze the differences.
+- The warm-starting model starts with some pre-trained weights that are learned by training the model on 50% of the training data. 
+- The randomly initialized model starts with random weights that are not learned from any data.
+
+Both models train on the full training data for 350 epochs, where one epoch means one pass over the entire data. The experiment will measure the accuracy of the models on both the training and test sets, which is the percentage of correctly classified images.
 ::: 
 
 ::: {.cell .code}
@@ -30,7 +26,6 @@ import os
 import json
 import torch
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from torch.utils.data import random_split
 from torchvision import transforms, datasets, models
@@ -40,19 +35,17 @@ from torchvision import transforms, datasets, models
 ::: {.cell .markdown}
 ***
 
-The following function is `get_loaders` which we use to load the CIFAR-10 dataset, which consists of 60,000 color images of 10 classes, and returns data loaders for training and testing. The function takes four parameters:
+The following function is `get_loaders` which we use to load the CIFAR-10 dataset, which consists of 60,000 color images of 10 classes, and returns data loaders for training and testing. The function has three parameters, you will need to know the following about them:
 
-- `dataset`: A string that specifies the desired dataset. For this experiment, we use the `cifar10` key to access the CIFAR-10 dataset from the `dataset_factories` dictionary.
 - `use_half_train`: a boolean flag that indicates whether to use only half of the training data or the whole dataset. If this is set to `True`, then the parameter `dataset_portion` is automatically set to 0.5.
-- `batch_size`: an integer that specifies the number of images to process in each batch. A larger batch size may speed up the training but also require more memory.
-- `dataset_portion`: a double value between 0 and 1 that indicates the portion of the training data to use. For example, if this is set to 0.8, then only 80% of the training data will be used and the rest will be discarded.
+-   `dataset_portion`: a double value between 0 and 1 that indicates the portion of the training data to use. For example, if this is set to 0.8, then only 80% of the training data will be used and the rest will be discarded.
 
 The function returns a dictionary with two keys: `train_loader` and `test_loader` which can be used to iterate over the training and testing data respectively. The function also downloads the dataset from torchvision datasets if it is not already present in the specified directory.
 :::
 
 ::: {.cell .code}
 ``` python
-def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset_portion=None):
+def get_loaders(use_half_train=False, batch_size=128, dataset_portion=None):
     """
     This loads the whole CIFAR-10 into memory and returns train and test data according to params
     @param use_half_train (bool): return half the data or the whole train data
@@ -71,22 +64,11 @@ def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset
     # Test transformation function    
     test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
     
-    # Check which dataset is required and load data from torchvision datasets
-    if dataset == 'cifar10':
-        original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
-                                             train=True, transform=train_transform, download=True)
-        original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
-                                             train=False, transform=test_transform, download=True)
-    elif dataset == 'cifar100':
-        original_train_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
-                                             train=True, transform=train_transform, download=True)
-        original_test_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
-                                             train=False, transform=test_transform, download=True)
-    else:
-        original_train_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
-                                             split='train', transform=train_transform, download=True)
-        original_test_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
-                                             split='test', transform=test_transform, download=True)
+    # Load data from torchvision datasets
+    original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                         train=True, transform=train_transform, download=True)
+    original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                         train=False, transform=test_transform, download=True)
     
     # Check half data flag
     if use_half_train:
@@ -122,7 +104,7 @@ def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset
 ::: {.cell .markdown}
 *** 
 
-The following function is the `train_model_exp1` which trains a ResNet-18 model on the CIFAR-10 dataset and returns the train and test accuracies. The function takes six parameters:
+The following function is the `train_model_epochs` which trains a ResNet-18 model on the CIFAR-10 dataset and returns the train and test accuracies. The function takes six parameters:
 
 - `title`: a string that specifies the name of the experiment. This is used to create a subdirectory under the `experiments/exp1` directory where the model checkpoints and final weights will be saved.
 - `experiment_dir`: a string that specifies the path of the experiment directory. If this is `None`, then the function will use the title parameter to create a default directory name.
@@ -142,7 +124,9 @@ def get_accuracy(logit, true_y):
     return (pred_y == true_y).float().mean()
 
 # Function to train the model and return train and test accuracies
-def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.001, checkpoint=None, epochs=10):
+def train_model_epochs(title='', experiment_dir=None, use_half_data=False,
+                        lr=0.001, checkpoint=None, epochs=10, random_seed=42):
+    
     # Create experiment directory name if none
     if experiment_dir is None:
         experiment_dir = os.path.join('experiments/exp1', title)
@@ -151,8 +135,8 @@ def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.00
     os.makedirs(experiment_dir, exist_ok=True)
 
     # Set the seed
-    torch.manual_seed(42)
-    np.random.seed(42)
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
 
     # Check if GPU is available
     if torch.cuda.is_available():
@@ -162,8 +146,7 @@ def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.00
         device = torch.device('cpu')
 
     # Get the dataset
-    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
-    num_classes = 10
+    loaders = get_loaders(use_half_train=use_half_data)
 
     # Get the model
     model = models.resnet18(num_classes=10).to(device)
@@ -182,13 +165,14 @@ def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.00
     test_acc = [0]
     train_acc = [0]
 
-    # Train the model
+    # Iterate over the number of epochs
     for epoch in range(1, epochs + 1):
         model.train()
         print(f"Epoch {epoch}")
         accuracies = []
         losses = []
-
+        
+        # Calculate loss and gradients for models on every training batch
         for batch_idx, (data_x, data_y) in enumerate(loaders["train_loader"]):
             data_x = data_x.to(device)
             data_y = data_y.to(device)
@@ -197,19 +181,22 @@ def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.00
             model_y = model(data_x)
             loss = criterion(model_y, data_y)
             batch_accuracy = get_accuracy(model_y, data_y)
+            
+            # Perform back propagation
             loss.backward()
             optimizer.step()
 
             accuracies.append(batch_accuracy.item())
             losses.append(loss.item())
 
-
+        # Store training accuracy for plotting
         train_loss = np.mean(losses)
         train_accuracy = np.mean(accuracies)
         train_acc.append(train_accuracy*100)
 
         print("Train accuracy: {} Train loss: {}".format(train_accuracy, train_loss))
 
+        # Evaluate the model on all the test batches
         accuracies = []
         losses = []
         model.eval()
@@ -224,12 +211,13 @@ def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.00
             accuracies.append(batch_accuracy.item())
             losses.append(loss.item())
 
+        # Store test accuracy for plotting
         test_loss = np.mean(losses)
         test_accuracy = np.mean(accuracies)
         test_acc.append(test_accuracy*100)
         print("Test accuracy: {} Test loss: {}".format(test_accuracy, test_loss))
 
-
+    # Save the final model
     torch.save({
         'model': model.state_dict()
     }, os.path.join(experiment_dir, 'final.pt'))
@@ -242,9 +230,21 @@ def train_model_exp1(title='', experiment_dir=None, use_half_data=False, lr=0.00
 ::: {.cell .markdown}
 ***
 
+Before running the experiment we create a parameter table to store the parameter values from the paper that we will use in the upcoming cells.
+
+| Model                 | Learning rate | Epochs | use half data | Checkpoint           | Optimizer |
+| :-------------------: | :-----------: | :----: | :-----------: | :------------------: | :-------: |
+| Trained on half data  |  0.0001       |  350   |      True     | No checkpoint        |     SGD   |
+| Warm-Starting         |  0.0001       |  350   |      False    | Trained on half data |     SGD   |
+| Random initialized    |  0.0001       |  350   |      False    | No checkpoint        |     SGD   |
+:::
+
+::: {.cell .markdown}
+***
+
 To be used warm-starting a model later, we first train a model for 350 epochs on 50% of the CIFAR-10 dataset. We keep track of the train and test accuracies at each epoch, which will form the blue line on the left half of figure 1.
 
-We set `use_half_data` to `True` to train on only half of the CIFAR-10 dataset. We don’t need a `checkpoint` since we start from scratch. We use `lr = 0.001` for all models, following the original paper.
+We set `use_half_data` to `True` to train on only half of the CIFAR-10 dataset. We don’t need a `checkpoint` since we start from scratch.
 :::
 
 ::: {.cell .code}
@@ -252,15 +252,19 @@ We set `use_half_data` to `True` to train on only half of the CIFAR-10 dataset. 
 # initialize runs dictionary to hold runs outputs
 runs = {}
 
-# Run the train_model_exp1 function to get train and test accuracies for the first model (trained on half the data)
-half_cifar_train_acc, half_cifar_test_acc = train_model_exp1( title="half_cifar",
-                                                                use_half_data=True,
-                                                                lr=0.001,
-                                                                checkpoint=None,
-                                                                epochs=350 )
+# Run the train_model_epochs function to get train and test accuracies for the first model 
+# Random initialized model trained on half the data
+half_train_acc, half_test_acc = train_model_epochs( title="half_cifar",
+                                                    use_half_data=True,
+                                                    lr=0.001,
+                                                    checkpoint=None,
+                                                    epochs=350 )
 
 # Put the results in the runs dictionary
-runs["half_cifar"] = [half_cifar_train_acc, half_cifar_test_acc, 0]
+runs["half_cifar"] = { 'training_accuracy' : half_train_acc,
+                       'test_accuracy' : half_test_acc,
+                       'offset' : 0
+                     }
 ```
 :::
 
@@ -269,20 +273,24 @@ runs["half_cifar"] = [half_cifar_train_acc, half_cifar_test_acc, 0]
 
 Now we use the previous model to train a warm-starting model for 350 epochs on 100% of the CIFAR-10 dataset. We keep track of the train and test accuracies at each epoch, which will form the blue line on the right half of figure 1.
 
-We set `use_half_data` to `False` to train on the full CIFAR-10 dataset. We add a `checkpoint` to the model trained on 50% of the data.
+We set `use_half_data` to `False` to train on the full CIFAR-10 dataset. We specify a `checkpoint` to the model trained on 50% of the data.
 :::
 
 ::: {.cell .code}
 ``` python
-# Run the train_model_exp1 function to get train and test accuracies for the Second model ( warm starting )
-warm_start_train_acc, warm_start_test_acc = train_model_exp1( title="warm_start",
-                                                                use_half_data=False,
-                                                                lr=0.001,
-                                                                checkpoint='experiments/exp1/half_cifar/final.pt',
-                                                                epochs=350 )
+# Run the train_model_epochs function to get train and test accuracies for the Second model
+# Warm starting model using the first model
+ws_train_acc, ws_test_acc = train_model_epochs( title="warm_start",
+                                                use_half_data=False,
+                                                lr=0.001,
+                                                checkpoint='experiments/exp1/half_cifar/final.pt',
+                                                epochs=350 )
 
 # Put the results in the runs dictionary
-runs["warm_start"] = [warm_start_train_acc, warm_start_test_acc, 1]
+runs["warm_start"] = { 'training_accuracy' : ws_train_acc,
+                       'test_accuracy' : ws_test_acc,
+                       'offset' : len(ws_test_acc)
+                     }
 ```
 :::
 
@@ -296,15 +304,19 @@ We set `use_half_data` to `False` to train on the full CIFAR-10 dataset. We don�
 
 ::: {.cell .code}
 ``` python
-# Run the train_model_exp1 function to get train and test accuracies for the Last model ( randomly initialized )
-full_cifar_train_acc, full_cifar_test_acc = train_model_exp1( title="full_cifar",
-                                                                use_half_data=False,
-                                                                lr=0.001,
-                                                                checkpoint=None,
-                                                                epochs=350 )
+# Run the train_model_epochs function to get train and test accuracies for the Last model
+# Model with random initialization
+ri_train_acc, ri_test_acc = train_model_epochs( title="random_init",
+                                                use_half_data=False,
+                                                lr=0.001,
+                                                checkpoint=None,
+                                                epochs=350 )
 
 # Put the results in the runs dictionary
-runs["full_cifar"] = [full_cifar_train_acc, full_cifar_test_acc, 1]
+runs["random_init"] = { 'training_accuracy' : ri_train_acc,
+                       'test_accuracy' : ri_test_acc,
+                       'offset' : len(ri_test_acc)
+                     }
 ```
 :::
 
@@ -333,22 +345,22 @@ Let’s visualize the accuracies and analyze the outcomes! Run the next cell to 
 # Read from json file
 with open("experiments/exp1/runs.json", "r") as f:
     runs = json.load(f)
-
+    
 # Get number of epochs
-epochs = len(list(runs.items())[0][1][0])
+epochs = len(runs['half_cifar']['training_accuracy'])
 
 # Select colors
 colors = {'half_cifar' : 'C0',
           'warm_start' : 'C0',
-          'full_cifar' : 'C1',
+          'random_init' : 'C1',
          }
 
 # Plot train Figure
 plt.figure()
-for title, vals in runs.items():
-    offset = epochs * vals[2]
-    x = np.arange(offset, offset + len(vals[0]))
-    y = vals[0]
+for title, dictionary in runs.items():
+    offset = dictionary['offset']
+    x = np.arange(offset, offset + len(dictionary['training_accuracy']))
+    y = dictionary['training_accuracy']
     plt.plot(x, y, label=title, c=colors[title])
 plt.legend()
 
@@ -359,10 +371,10 @@ plt.savefig("experiments/exp1/fig1_train.png")
 
 # Plot test Figure
 plt.figure()
-for title, vals in runs.items():
-    offset = epochs * vals[2]
-    x = np.arange(offset, offset + len(vals[1]))
-    y = vals[1]
+for title, dictionary in runs.items():
+    offset = dictionary['offset']
+    x = np.arange(offset, offset + len(dictionary['test_accuracy']))
+    y = dictionary['test_accuracy']
     plt.plot(x, y, label=title, c=colors[title])
 plt.legend()
 
@@ -375,12 +387,9 @@ plt.savefig("experiments/exp1/fig1_test.png")
 
 ::: {.cell .markdown}
 ***
+**Did we validate the qualitative claim? Numerically, are the results consistent with the original paper? 🤔**
 
-<p style="color: crimson;font-size: 16px;">Did the experiment description provide all the parameter values or did we make any assumptions? If so, what criteria do you think was used to make those assumptions?</p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
+**In the parameter table we speicified the parameter values that we used in the experiment. Can you find these values in the paper text?  🔍**
 
 ***
 :::
@@ -391,10 +400,7 @@ This experiment uses a specific model and optimizer. Exploring different combina
 
 - Use a lower learning rate since the model achieves 99% training accuracy quickly
 - Use number of epochs at which validation accuracies of both models are maximized
+- Check the sensitivity of the model to the random seed by changing it
 
 ***
-:::
-
-::: {.cell .markdown}
-If you are using colab click on this link to go to the next notebook: [Open in Colab](https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/notebooks/04-Experiment2.ipynb)
 :::

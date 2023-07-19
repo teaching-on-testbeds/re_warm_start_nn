@@ -1,8 +1,10 @@
 ::: {.cell .markdown}
 ## Experiment 3:
-In this experiment we conduct an experiment to compare the effects of random initialization and warm-starting on online training, which is a common scenario in real time setting. We divide the **CIFAR-10** dataset into splits of 1000 samples each, and train a **ResNet18** model on each split until it reaches *99% training accuracy*. We incrementally add more splits to the training data until we exhaust the whole dataset. We record the training time and test accuracy for each split and analyze the differences between the two initialization methods.
+In this experiment we test the claim *"Warm-starting neural networks saves resources and time, but lowers test accuracy compared to random initialized models"*. We train the model with two initialization and expect to see less training time and less test accuracy for the warm-starting model.
 
-We reuse the same components from the previous experiment, except for the `get_cifar10_online_loaders` function, which returns a list train loaders with a variable number of samples. We also use the ResNet18 model from torchvision and the Adam optimizer from `torch.optim`, with cross entropy loss as the loss function.
+We conduct an experiment to compare the effects of random initialization and warm-starting on online training, which is a common scenario in real time setting. We divide the **CIFAR-10** dataset into splits of 1000 samples each, and train a **ResNet18** model on each split until it reaches *99% training accuracy*. We incrementally add more splits to the training data until we exhaust the whole dataset. We record the training time and test accuracy for each split and analyze the differences between the two initialization methods.
+
+We reuse some components from the previous experiment as the **ResNet18** model from torchvision and the **Adam** optimizer from `torch.optim`, with cross entropy loss as the loss function.
 ::: 
 
 ::: {.cell .markdown}
@@ -194,7 +196,7 @@ def train_one_epoch(device, model, optimizer, criterion, dataloader):
 
 ::: {.cell .markdown}
 ***
-The `train_exp3` function performs an online learning experiment on the CIFAR-10 dataset, using a ResNet18 model and an Adam optimizer. The function uses the following new parameters:
+The `train_model_online` function performs an online learning experiment on the **CIFAR-10** dataset, using a **ResNet18** model and an **Adam** optimizer. The function uses the following new parameters:
 
 - `init_type`: string indicating the type of initialization for the model. It can be either *random* or *warm*. If *random*, the model is reset for each split of data. If *warm*, the model is reused with the previous parameters.
 - `split_size`: integer indicating the number of samples to add to the training data in each iteration.
@@ -204,14 +206,14 @@ The `train_exp3` function performs an online learning experiment on the CIFAR-10
 ```python
 from datetime import datetime
 
-def train_exp3(init_type='random', lr=0.001, split_size=1000, acc_threshold=0.99, random_seed=42):
+def train_model_online(init_type='random', lr=0.001, split_size=1000, acc_threshold=0.99, random_seed=42):
     experiment_dir = 'experiments/exp3'
     # make experiment directory
     os.makedirs(experiment_dir, exist_ok=True)
 
     # Set the seed
-    torch.manual_seed(42)
-    np.random.seed(42)
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
 
     # Check if GPU is available
     if torch.cuda.is_available():
@@ -277,10 +279,21 @@ def train_exp3(init_type='random', lr=0.001, split_size=1000, acc_threshold=0.99
     # Add to results
     results["test_accuracies_online"] = test_accuracies_online
     results["training_times_online"] = training_times_online
-    results["number_of_samples_online"] = number_of_samples_online
+    results["n_samples_online"] = number_of_samples_online
         
     return results
 ```
+:::
+
+::: {.cell .markdown}
+***
+
+Before running the experiment we create a parameter table to store the parameter values from the paper that we will use in the next few cells.
+
+| Model                 | init_type | Learning rate | Optimizer | Training accuracy | split size |
+| :-------------------: | :-------: | :-----------: | :-------: | :---------------: | :--------: |
+| Warm-Starting         |    warm   |     0.001     |    Adam   |       99%         |    1000    |
+| Random initialization |  random   |     0.001     |    Adam   |       99%         |    1000    |
 :::
 
 ::: {.cell .markdown}
@@ -294,7 +307,7 @@ We start by training with **random** initialization using the previous function 
 results={}
 
 # Train on cifar10 for threshold 0.99
-results['random'] = train_exp3(init_type='random', lr=0.001, split_size=1000, acc_threshold=0.99, random_seed=42)
+results['random'] = train_model_online(init_type='random', lr=0.001, split_size=1000, acc_threshold=0.99, random_seed=42)
 
 # Save the outputs in a json file
 with open("experiments/exp3/results.json", "w") as f:
@@ -310,7 +323,7 @@ Next, we train with **warm-starting** models and store the results.
 ::: {.cell .code}
 ```python
 # Train on cifar10 for threshold 0.99
-results['warm'] = train_exp3(init_type='warm', lr=0.001, split_size=1000, acc_threshold=0.99, random_seed=42)
+results['warm'] = train_model_online(init_type='warm', lr=0.001, split_size=1000, acc_threshold=0.99, random_seed=42)
 
 # Save the outputs in a json file
 with open("experiments/exp3/results.json", "w") as f:
@@ -333,18 +346,18 @@ with open("experiments/exp3/results.json", "r") as f:
 fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
 # divide the number of samples to decrease them to two integers
-number_of_samples_online = np.array(results['warm']['number_of_samples_online']) / 1000
-number_of_samples_offline = np.array(results['random']['number_of_samples_online']) / 1000
+n_warm = np.array(results['warm']['n_samples_online']) / 1000
+n_random = np.array(results['random']['n_samples_online']) / 1000
 
 # Left plot accuracy comparison
-axs[0].plot(number_of_samples_online, results['warm']['test_accuracies_online'], label='warm start', color='C0')
-axs[0].plot(number_of_samples_offline, results['random']['test_accuracies_online'], label='random', color='C1')
+axs[0].plot(n_warm, results['warm']['test_accuracies_online'], label='warm start', color='C0')
+axs[0].plot(n_random, results['random']['test_accuracies_online'], label='random', color='C1')
 axs[0].set_ylabel("Test Accuracy")
 axs[0].set_xlabel("Number of Samples (thousands)")
 
 # Right plot time comparison
-axs[1].plot(number_of_samples_online, results['warm']['training_times_online'], label='warm start', color='C0')
-axs[1].plot(number_of_samples_offline, results['random']['training_times_online'], label='random', color='C1')
+axs[1].plot(n_warm, results['warm']['training_times_online'], label='warm start', color='C0')
+axs[1].plot(n_random, results['random']['training_times_online'], label='random', color='C1')
 axs[1].set_ylabel("Train Time (seconds)")
 axs[1].set_xlabel("Number of Samples (thousands)")
 
@@ -358,11 +371,9 @@ plt.savefig(f"experiments/exp3/cifar10-99.png")
 ::: {.cell .markdown}
 ***
 
-<p style="color: crimson;font-size: 16px;">Did the experiment description provide all the parameter values or did we make any assumptions? If so, what criteria do you think was used to make those assumptions?</p>
-:::
+**How well do the results support the qualitative claim? How close are the numerical values to the ones in the original paper? 🤔**
 
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
+**We listed the parameter values we used in the experiment in the parameter table. Can you locate these values in the paper text? 🔍**
 
 ***
 :::
@@ -374,10 +385,13 @@ In this experiment you can:
 - Change the learning rate and observe what effects it have on the experiment.
 - Experiment other `split_size` values and see if it affects the results of the generalization gap
 - Try different `acc_threshold` values and see how they affect the training time and the generalization gap
+- Change the random seed to test the sensitivity
 
 ***
 :::
 
 ::: {.cell .markdown}
-If you are using colab click on this link to go to the next notebook: [Open in Colab](https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/notebooks/06-Explanation.ipynb)
+**There are more claims in the paper. Identify one of those claims and validate its qualitative and quantitative versions.** \
+Hint: You can find some of the functions that we used helpful. 
+For example you can use the MLP class to create a logistic regression model as `logistic = MLP(input_dim, num_classes, hidden_units=[])`
 :::

@@ -9,14 +9,14 @@ The paper is available on [arXiv](https://arxiv.org/abs/1910.08475). In creating
 ::: {.cell .markdown}
 ## Introduction
 
-The paper *"On Warm-Starting Neural Network Training"* by Jordan T. Ash and Ryan P. Adams addresses a common challenge in machine learning scenarios where the neural network model needs to be updated with new data that comes in continuously. For instance, Netflix’s movie recommendation system has to continuously update its model to account for the ratings and views of users, as well as the features and genres of movies, which change over time as new movies are released or existing movies are updated.
+The paper *"On Warm-Starting Neural Network Training"* by Jordan T. Ash and Ryan P. Adams addresses a common challenge in machine learning scenarios where the neural network model needs to be updated with new data that comes in continuously. For instance, Netflix’s movie recommendation system has to continuously update its model to account for the ratings and views of users, as well as the features and genres of movies, which change over time as new movies are released or existing movies are updated. Each time they train the model on the new dataset they can choose from different retraining strategies.
 
 The paper investigates the trade-offs between two retraining strategies: 
 
 - Starting from scratch with random weight initialization
 - Using the weights of the model trained on the dataset before the new data was added
 
-**What are your thoughts on each of these initializtions?**  🤔
+**What are your thoughts on each of these initializtions? Do you think they should yield similar results? Do you think they require the same training time?**  🤔
 :::
 
 :::{.cell .markdown}

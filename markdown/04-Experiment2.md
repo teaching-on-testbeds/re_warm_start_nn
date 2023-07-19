@@ -1,15 +1,10 @@
 ::: {.cell .markdown}
 ## Experiment 2:
- 
-In this experiment, we compare two methods of weight initialization: warm-starting and random initialization, for two models: **ResNet18** and **3-layer MLP** with tanh activation. We also compare two optimizers: **SGD** and **Adam**, for updating the weights based on the gradients. We use three image classification datasets:  **CIFAR-10**, **CIFAR-100** and **SVHN**, and report the test accuracy of each model on each dataset. All models are trained using a mini-batch size of 128 and a learning rate of 0.001.
+In this experiment, we evaluate the claim that *"The test accuracy of the warm-started model is lower than that of the randomly initialized model across various datasets, optimizers and model architectures"*. We experiment with different combinations of model architectures, datasets and optimizers and expect to see a gap in test accuracy between the warm-started and random initialized models in each case.
 
-We use the same components as in experiment one: the `get_loaders` function to get the required dataset's train and test loaders, the [**ResNet18**](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html) model from `torchvision.models`, and the [**SGD**](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) optimizer from `torch.optim`. We also introduce some new components:
+We compare two methods of weight initialization: warm-starting and random initialization, for two models: **ResNet18** and **3-layer MLP** with tanh activation. We also compare two optimizers: **SGD** and **Adam**, for updating the weights based on the gradients. We use three image classification datasets:  **CIFAR-10**, **CIFAR-100** and **SVHN**, and report the test accuracy of each model on each dataset. All models are trained using a mini-batch size of 128 and a learning rate of 0.001.
 
-1. The **CIFAR-100** dataset, which has 60,000 color images of 100 classes. To get the CIFAR-100 dataset, we pass the string `cifar100` as the dataset name argument to the `get_loaders` function.
-2. The **SVHN** dataset, which has 73,257 color images of 10 classes of street view house numbers. To get the SVHN dataset, we pass the string `svhn` as the dataset name argument to the `get_loaders` function.
-3. The `MLP` class that defines a 3-layer MLP model with a tanh activation function and a bias term.
-4. The `torch.optim.Adam` class that implements the [**Adam**](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html) optimizer, which is an adaptive learning rate method.
-5. The `train_to_threshold` function that trains the model until it reaches 99% training accuracy, following the original paper.
+We use the same components as in experiment one: the `get_loaders` function to get the required dataset's train and test loaders, the [**ResNet18**](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html) model from `torchvision.models`, and the [**SGD**](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) optimizer from `torch.optim`.
 :::
 
 ::: {.cell .markdown}
@@ -25,7 +20,6 @@ import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
-import matplotlib.pyplot as plt
 from torch.utils.data import random_split
 from torchvision import transforms, datasets, models
 ```
@@ -38,7 +32,7 @@ This is the same `get_loaders` function from Experiment 1
 
 ::: {.cell .code}
 ``` python
-def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset_portion=None):
+def get_loaders(use_half_train=False, batch_size=128, dataset_portion=None):
     """
     This loads the whole CIFAR-10 into memory and returns train and test data according to params
     @param use_half_train (bool): return half the data or the whole train data
@@ -57,22 +51,11 @@ def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset
     # Test transformation function    
     test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
     
-    # Check which dataset is required and load data from torchvision datasets
-    if dataset == 'cifar10':
-        original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
-                                             train=True, transform=train_transform, download=True)
-        original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
-                                             train=False, transform=test_transform, download=True)
-    elif dataset == 'cifar100':
-        original_train_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
-                                             train=True, transform=train_transform, download=True)
-        original_test_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
-                                             train=False, transform=test_transform, download=True)
-    else:
-        original_train_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
-                                             split='train', transform=train_transform, download=True)
-        original_test_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
-                                             split='test', transform=test_transform, download=True)
+    # Load data from torchvision datasets
+    original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                         train=True, transform=train_transform, download=True)
+    original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                         train=False, transform=test_transform, download=True)
     
     # Check half data flag
     if use_half_train:
@@ -105,80 +88,10 @@ def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset
 ```
 :::
 
-
 ::: {.cell .markdown}
 ***
 
-The following is a class for a **multilayer perceptron** (MLP) model with several fully connected (fc) layers and a final fully connected layer for the logits output. The arguments are:
-
-- `input_dim`: the input feature dimension.
-- `num_classes`: the output class number.
-- `hidden_units`: the hidden unit number for each fc layer we set the default as 100 dimension as mentioned in the appendix.
-- `activation`: the activation function, either `tanh` or `relu`.
-- `bias`: whether to use bias terms in the fc layers.
-
-The function returns an MLP model object that can be trained or tested. The forward method takes an input tensor x and returns an output tensor x with the logits values. The output tensor does not have a final activation function. This will be used to create the **3-layer MLP** model.
-:::
-
-::: {.cell .code}
-``` python
-# Define a class for a multilayer perceptron (MLP) model
-class MLP(nn.Module):
-    def __init__(self, input_dim, num_classes=10, hidden_units=[100, 100, 100], activation='tanh', bias=True):
-        super().__init__()
-
-        # Check that the activation argument is valid
-        assert activation in ['tanh', 'relu'], "Activation must be tanh or relu"
-
-        # Assign the activation function based on the argument
-        if activation == 'tanh':
-            self.activation_function = torch.tanh
-        if activation == 'relu':
-            self.activation_function = torch.relu
-        
-        # Store num_classes and input_dim to be used in forward function
-        self.num_classes = num_classes
-        self.input_dim = input_dim
-        
-        # Initialize a variable to keep track of the last dimension of the layers
-        last_dim = input_dim
-        
-        # Initialize an empty list to store the fully connected (fc) layers
-        self.fcs = []
-        
-        # Loop through the hidden units argument and create fc layers with the given dimensions and bias
-        for i, n_h in enumerate(hidden_units):
-            self.fcs.append(nn.Linear(last_dim, n_h, bias=bias))
-            # Register the fc layer as a submodule with a name
-            self.add_module(f"hidden_layer_{i}", self.fcs[-1])
-            # Update the last dimension to match the output dimension of the fc layer
-            last_dim = n_h
-            
-        # Create a final fc layer for the logits output with the number of classes and bias
-        self.logit_fc = nn.Linear(last_dim, self.num_classes, bias=bias)
-
-        
-    def forward(self, x):
-        # Reshape the input x to have a batch size and an input dimension
-        x = x.view(-1, self.input_dim)
-        
-        # Loop through the fc layers and apply them to x with the activation function
-        for fc in self.fcs:
-            x = fc(x)
-            x = self.activation_function(x)
-            
-        # Apply the final fc layer to x and return it as the output
-        x = self.logit_fc(x)
-        
-        # x is returned without adding the final activation
-        return x
-```
-:::
-
-::: {.cell .markdown}
-***
-
-The following cell defines two functions that perform one epoch of training or evaluation on a data loader. They return the average loss and accuracy of the model. These functions will be used in the training function to run epoch by epoch.
+We will train the model until it reaches the threshold, not a fixed number of epochs. Therefore, we define two functions in the following cell that perform one epoch of training or evaluation on a data loader and keep calling them in the training function until we reach the threshold. They return the average loss and accuracy of the model.
 :::
 
 ::: {.cell .code}
@@ -278,17 +191,17 @@ def train_one_epoch(device, model, optimizer, criterion, dataloader):
 
 ::: {.cell .markdown}
 ***
+We train our models to convergence rather than a fixed number of epochs. This allows models with different capacities to learn at their own pace. For instance, a model might reach its optimal performance at 100 epochs, while another one might still improve after 200 epochs. By training to convergence, we avoid underfitting or overfitting our models.
 
-The `train_to_threshold` function is the same as `train_model_exp1` functions except that it trains the model until a certain `training_threshold` or until the change in the training accuracy doesn't exceed `convergence_change_threshold` for certain number of epochs. The new parameter introduced are:
+We introduce the `train_model_threshold` function which is the same as `train_model_epochs` functions except that instead of training for a certain number of epochs we train until:
 
-- `train_threshold`: The training accuracy at which the model stops training.
-- `convergence_change_threshold`: The minimum accuracy change to continue training.
-- `convergence_epochs`: The maximum number of epochs allowed with insufficient change in training accuracy before stopping the training.
+- The training accuracy of the model is equal to the `training_threshold`
+- The change in the training accuracy doesn't exceed `convergence_change_threshold` for certain number of epochs specified by `convergence_epochs` parameter
 :::
 
 ::: {.cell .code}
 ``` python
-def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False, convergence_epochs=4,
+def train_model_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False, convergence_epochs=4,
                        train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
     # use gpu if available ( change device id if needed )
     if torch.cuda.is_available():
@@ -302,7 +215,7 @@ def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=Fa
     np.random.seed(random_seed)
 
     # Get the dataset
-    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
+    loaders = get_loaders(use_half_train=use_half_data)
 
     # Get the model
     model = models.resnet18(num_classes=10).to(device)
@@ -371,17 +284,24 @@ def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=Fa
 
 ::: {.cell .markdown}
 ***
+Before running the experiment we create a parameter table for to store the parameter values from the paper that we will use in the upcoming cells.
 
-The ResNet-18 model is trained on the CIFAR-10 dataset using an SGD optimizer and the `train_to_threshold` function. It is trained with warm-start and random initialization.
+| Dataset   | Model           | Optimizer  | Learning rate | Train threshold |
+| :-------: | :-------------: | :--------: | :-----------: | :-------------: |
+| CIFAR-10  | ResNet-18 / MLP | SGD / Adam |  0.0001       |  99%            |
+| CIFAR-100 | ResNet-18 / MLP | SGD / Adam |  0.0001       |  99%            |
+| SVHN      | ResNet-18 / MLP | SGD / Adam |  0.0001       |  99%            |
+
+We will extend our functions as we go to run the whole experiment. For now, they support **CIFAR-10**, **SGD** and **ResNet-18**.
 :::
 
 ::: {.cell .code}
 ``` python
 # Dictionary to save all results
-overal_result = {}
+overall_results = {}
 
 # train on full data with random initialization
-random_init = train_to_threshold(title='resnet-sgd-cifar10', train_threshold=0.99)
+random_init = train_model_threshold(title='resnet-sgd-cifar10', train_threshold=0.99)
 ```
 :::
 
@@ -389,10 +309,10 @@ random_init = train_to_threshold(title='resnet-sgd-cifar10', train_threshold=0.9
 ::: {.cell .code}
 ``` python
 # train on half data
-_ = train_to_threshold(title='resnet-sgd-cifar10', train_threshold=0.99, use_half_data=True)
+_ = train_model_threshold(title='resnet-sgd-cifar10', train_threshold=0.99, use_half_data=True)
 
 # train on full data with warm-starting
-warm_start = train_to_threshold(title='resnet-sgd-cifar10', train_threshold=0.99,
+warm_start = train_model_threshold(title='resnet-sgd-cifar10', train_threshold=0.99,
                                      checkpoint='experiments/exp2/resnet-sgd-cifar10/resnet18-sgd.pt')
 ```
 :::
@@ -403,20 +323,19 @@ warm_start = train_to_threshold(title='resnet-sgd-cifar10', train_threshold=0.99
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['resnet-sgd-cifar10'] = [random_init, warm_start, diff]
+overall_results['resnet-sgd-cifar10'] = [random_init, warm_start, diff]
 ```
 :::
-
 
 ::: {.cell .markdown}
 ***
 
-We extend this experiment by training the same model with the Adam optimizer instead of SGD. We add a new parameter `optimizer_name` to select the optimizer for the model.
+We extend this experiment by training the same model with the Adam optimizer instead of SGD. We add a new parameter `optimizer_name` to select the optimizer for the model. The `torch.optim.Adam` class that implements the [**Adam**](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html) optimizer, which is an adaptive learning rate method.
 :::
 
 ::: {.cell .code}
 ``` python
-def train_to_threshold(title='warm', lr=0.001, checkpoint=None, 
+def train_model_threshold(title='warm', lr=0.001, checkpoint=None, 
                        use_half_data=False, optimizer_name='adam', convergence_epochs=4,
                        train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
     # use gpu if available ( change device id if needed )
@@ -431,7 +350,7 @@ def train_to_threshold(title='warm', lr=0.001, checkpoint=None,
     np.random.seed(random_seed)
 
     # Get the dataset
-    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
+    loaders = get_loaders(use_half_train=use_half_data)
 
     # Get the model
     model = models.resnet18(num_classes=10).to(device)
@@ -504,39 +423,108 @@ def train_to_threshold(title='warm', lr=0.001, checkpoint=None,
 ::: {.cell .markdown}
 ***
 
-We repeat the training of the same models with the Adam optimizer instead of SGD.
+We repeat the training of the same models with the **Adam** optimizer instead of **SGD**.
 :::
 
 ::: {.cell .code}
 ``` python
 # train on full data with random initialization but with Adam
-random_init = train_to_threshold(title='resnet-adam-cifar10', train_threshold=0.99, optimizer_name='adam')
+random_init = train_model_threshold(title='resnet-adam-cifar10', train_threshold=0.99, optimizer_name='adam')
 
 # train on half data
-_ = train_to_threshold(title='resnet-adam-cifar10', train_threshold=0.99,
+_ = train_model_threshold(title='resnet-adam-cifar10', train_threshold=0.99,
                                              optimizer_name='adam', use_half_data=True)
 
 # train on full data with warm-starting but with Adam
-warm_start = train_to_threshold(title='resnet-adam-cifar10', train_threshold=0.99, optimizer_name='adam',
+warm_start = train_model_threshold(title='resnet-adam-cifar10', train_threshold=0.99, optimizer_name='adam',
                                         checkpoint='experiments/exp2/resnet-adam-cifar10/resnet18-adam.pt')
 
 # get the difference between random and warm-start models using Adam optimizer on CIFAR-10
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['resnet-adam-cifar10'] = [random_init, warm_start, diff]
+overall_results['resnet-adam-cifar10'] = [random_init, warm_start, diff]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-We also experiment with the MLP model instead of the ResNet. We introduce a parameter `model_name` to select the model for the training.
+We introduce a new class for a **multilayer perceptron** (MLP) model with several fully connected (fc) layers and a final fully connected layer for the logits output. The arguments are:
+
+- `input_dim`: the input feature dimension.
+- `num_classes`: the output class number.
+- `hidden_units`: the hidden unit number for each fc layer we set the default as 100 dimension as mentioned in the appendix.
+- `activation`: the activation function, either `tanh` or `relu`.
+- `bias`: whether to use bias terms in the fc layers.
+
+The function returns an MLP model object that can be trained or tested. The forward method takes an input tensor x and returns an output tensor x with the logits values. The output tensor does not have a final activation function. This will be used to create the **3-layer MLP** model.
 :::
 
 ::: {.cell .code}
 ``` python
-def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False,
+# Define a class for a multilayer perceptron (MLP) model
+class MLP(nn.Module):
+    def __init__(self, input_dim, num_classes=10, hidden_units=[100, 100, 100], activation='tanh', bias=True):
+        super().__init__()
+
+        # Check that the activation argument is valid
+        assert activation in ['tanh', 'relu'], "Activation must be tanh or relu"
+
+        # Assign the activation function based on the argument
+        if activation == 'tanh':
+            self.activation_function = torch.tanh
+        if activation == 'relu':
+            self.activation_function = torch.relu
+        
+        # Store num_classes and input_dim to be used in forward function
+        self.num_classes = num_classes
+        self.input_dim = input_dim
+        
+        # Initialize a variable to keep track of the last dimension of the layers
+        last_dim = input_dim
+        
+        # Initialize an empty list to store the fully connected (fc) layers
+        self.fcs = []
+        
+        # Loop through the hidden units argument and create fc layers with the given dimensions and bias
+        for i, n_h in enumerate(hidden_units):
+            self.fcs.append(nn.Linear(last_dim, n_h, bias=bias))
+            # Register the fc layer as a submodule with a name
+            self.add_module(f"hidden_layer_{i}", self.fcs[-1])
+            # Update the last dimension to match the output dimension of the fc layer
+            last_dim = n_h
+            
+        # Create a final fc layer for the logits output with the number of classes and bias
+        self.logit_fc = nn.Linear(last_dim, self.num_classes, bias=bias)
+
+        
+    def forward(self, x):
+        # Reshape the input x to have a batch size and an input dimension
+        x = x.view(-1, self.input_dim)
+        
+        # Loop through the fc layers and apply them to x with the activation function
+        for fc in self.fcs:
+            x = fc(x)
+            x = self.activation_function(x)
+            
+        # Apply the final fc layer to x and return it as the output
+        x = self.logit_fc(x)
+        
+        # x is returned without adding the final activation
+        return x
+```
+:::
+
+::: {.cell .markdown}
+***
+
+We also experiment with the **MLP** model instead of the **ResNet**. We introduce a parameter `model_name` to select the model for the training.
+:::
+
+::: {.cell .code}
+``` python
+def train_model_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=False,
                         optimizer_name='adam', model_name='resnet18', convergence_epochs=4,
                         train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
     # use gpu if available ( change device id if needed )
@@ -551,7 +539,7 @@ def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=Fa
     np.random.seed(random_seed)
 
     # Get the dataset
-    loaders = get_loaders(dataset="cifar10", use_half_train=use_half_data)
+    loaders = get_loaders(use_half_train=use_half_data)
 
     # Get the model
     if model_name == 'resnet18':
@@ -627,68 +615,145 @@ def train_to_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data=Fa
 ::: {.cell .markdown}
 ***
 
-We use warm-starting and the SGD optimizer to train the MLP model in the next cell.
+We use warm-starting and the **SGD** optimizer to train the **MLP** model in the next cell.
 :::
 
 ::: {.cell .code}
 ``` python
 # train MLP model on full data with random initialization and SGD optimizer
-random_init = train_to_threshold(title='mlp-sgd-cifar10', train_threshold=0.99, 
+random_init = train_model_threshold(title='mlp-sgd-cifar10', train_threshold=0.99, 
                                  optimizer_name='sgd', model_name='mlp')
 
 # train MLP model on half data
-_ = train_to_threshold(title='mlp-sgd-cifar10', train_threshold=0.99, 
+_ = train_model_threshold(title='mlp-sgd-cifar10', train_threshold=0.99, 
                        optimizer_name='sgd', model_name='mlp', use_half_data=True)
 
 # train MLP on full data with warm-starting and SGD optimizer
-warm_start = train_to_threshold(title='mlp-sgd-cifar10', train_threshold=0.99, optimizer_name='sgd', 
+warm_start = train_model_threshold(title='mlp-sgd-cifar10', train_threshold=0.99, optimizer_name='sgd', 
                                 model_name='mlp', checkpoint='experiments/exp2/mlp-sgd-cifar10/mlp-sgd.pt')
 
 # get the difference between random and warm-start MLP models using SGD optimizer on CIFAR-10
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['mlp-sgd-cifar10'] = [random_init, warm_start, diff]
+overall_results['mlp-sgd-cifar10'] = [random_init, warm_start, diff]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-In the next cell, we train the MLP model with warm-starting and the Adam optimizer.
+In the next cell, we train the **MLP** model with warm-starting and the **Adam** optimizer.
 :::
 
 ::: {.cell .code}
 ``` python
 # train MLP model on full data with random initialization
-random_init= train_to_threshold(title='mlp-adam-cifar10', train_threshold=0.99, 
+random_init= train_model_threshold(title='mlp-adam-cifar10', train_threshold=0.99, 
                                 optimizer_name='adam', model_name='mlp')
 
 # train MLP mode on half data
-_ = train_to_threshold(title='mlp-adam-cifar10', train_threshold=0.99, 
+_ = train_model_threshold(title='mlp-adam-cifar10', train_threshold=0.99, 
                        optimizer_name='adam', model_name='mlp', use_half_data=True)
 
 # train MLP on full data with warm-starting
-warm_start = train_to_threshold(title='mlp-adam-cifar10', train_threshold=0.99, optimizer_name='adam',
+warm_start = train_model_threshold(title='mlp-adam-cifar10', train_threshold=0.99, optimizer_name='adam',
                                 model_name='mlp', checkpoint='experiments/exp2/mlp-adam-cifar10/mlp-adam.pt')
 
 # get the difference between random and warm-start MLP models using Adam optimizer on CIFAR-10
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['mlp-adam-cifar10'] = [random_init, warm_start, diff]
+overall_results['mlp-adam-cifar10'] = [random_init, warm_start, diff]
+```
+:::
+
+::: {.cell .markdown}
+***
+We extend the `get_loaders` function to include two more datasets:
+
+1. The **CIFAR-100** dataset, which has 60,000 color images of 100 classes. To get the CIFAR-100 dataset, we pass the string `cifar100` as the dataset name argument to the `get_loaders` function.
+2. The **SVHN** dataset, which has 73,257 color images of 10 classes of street view house numbers. To get the SVHN dataset, we pass the string `svhn` as the dataset name argument to the `get_loaders` function.
+:::
+
+::: {.cell .code}
+``` python
+def get_loaders(dataset="cifar10", use_half_train=False, batch_size=128, dataset_portion=None):
+    """
+    This loads the whole CIFAR-10 into memory and returns train and test data according to params
+    @param use_half_train (bool): return half the data or the whole train data
+    @param batch_size (int): batch size for training and testing
+    @param dataset_portion (double): portion of train data
+
+    @returns dict() with train and test data loaders with keys `train_loader`, `test_loader`
+    """
+    
+    # Normalization using channel means
+    normalize_transform = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+
+    # Creating transform function
+    train_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+        
+    # Test transformation function    
+    test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+    
+    # Check which dataset is required and load data from torchvision datasets
+    if dataset == 'cifar10':
+        original_train_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                             train=True, transform=train_transform, download=True)
+        original_test_dataset = datasets.CIFAR10(root=os.path.join('data', 'cifar10_data'),
+                                             train=False, transform=test_transform, download=True)
+    elif dataset == 'cifar100':
+        original_train_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
+                                             train=True, transform=train_transform, download=True)
+        original_test_dataset = datasets.CIFAR100(root=os.path.join('data', 'cifar100_data'),
+                                             train=False, transform=test_transform, download=True)
+    elif dataset == 'svhn':
+        original_train_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
+                                             split='train', transform=train_transform, download=True)
+        original_test_dataset = datasets.SVHN(root=os.path.join('data', 'svhn_data'),
+                                             split='test', transform=test_transform, download=True)
+    
+    # Check half data flag
+    if use_half_train:
+        print('Using Half Data')
+        dataset_portion = 0.5
+        
+    # Check if only a portion is required
+    if dataset_portion:
+        dataset_size = len(original_train_dataset)
+        split = int(np.floor((1 - dataset_portion) * dataset_size))
+        original_train_dataset, _ = random_split(original_train_dataset, [dataset_size - split, split])
+    
+    # Creating data loaders
+    loader_args = {
+        "batch_size": batch_size,
+    }
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset=original_train_dataset,
+        shuffle=True,
+        **loader_args)
+
+    test_loader = torch.utils.data.DataLoader(
+        dataset=original_test_dataset,
+        shuffle=False,
+        **loader_args)
+
+    return {"train_loader": train_loader,
+            "test_loader": test_loader}
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-Finaly we extend this to allow using the SVHN and CIFAR-100 datasets by adding a parameter `dataset` to specify the dataset we would like to use.
+Finaly we extend this to allow using the **SVHN** and **CIFAR-100** datasets by adding a parameter `dataset` to specify the dataset we would like to use.
 :::
 
 ::: {.cell .code}
 ``` python
-def train_to_threshold(title='warm', dataset='cifar10', lr=0.001, checkpoint=None, use_half_data=False,
+def train_model_threshold(title='warm', dataset='cifar10', lr=0.001, checkpoint=None, use_half_data=False,
                        optimizer_name='adam', model_name='resnet18', convergence_epochs=4,
                        train_threshold=0.5, convergence_change_threshold=0.002, random_seed=42):
     # use gpu if available ( change device id if needed )
@@ -783,21 +848,21 @@ def train_to_threshold(title='warm', dataset='cifar10', lr=0.001, checkpoint=Non
 ::: {.cell .markdown}
 ***
 
-We repeat all the previous for the CIFAR-100 dataset using the ResNet model with different optimizers.
+We repeat all the previous for the **CIFAR-100** dataset using the **ResNet** model with different optimizers.
 :::
 
 ::: {.cell .code}
 ``` python
 # train Resnet model on full CIFAR-100 data with random initialization and SGD optimizer
-random_init = train_to_threshold(title='resnet-sgd-cifar100', dataset='cifar100', train_threshold=0.99,
+random_init = train_model_threshold(title='resnet-sgd-cifar100', dataset='cifar100', train_threshold=0.99,
                                        optimizer_name='sgd', model_name='resnet18')
 
 # train on half CIFAR-100 data
-_ = train_to_threshold(title='resnet-sgd-cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='sgd',
+_ = train_model_threshold(title='resnet-sgd-cifar100', dataset='cifar100', train_threshold=0.99, optimizer_name='sgd',
                    model_name='resnet18', use_half_data=True)
 
 # train Resnet model on full CIFAR-100 data with warm-starting and SGD optimizer
-warm_start = train_to_threshold(title='resnet-sgd-cifar100', dataset='cifar100', train_threshold=0.99, 
+warm_start = train_model_threshold(title='resnet-sgd-cifar100', dataset='cifar100', train_threshold=0.99, 
                                 optimizer_name='sgd', model_name='resnet18', 
                                 checkpoint='experiments/exp2/resnet-sgd-cifar100/resnet18-sgd.pt')
 
@@ -805,18 +870,18 @@ warm_start = train_to_threshold(title='resnet-sgd-cifar100', dataset='cifar100',
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['resnet-sgd-cifar100'] = [random_init, warm_start, diff]
+overall_results['resnet-sgd-cifar100'] = [random_init, warm_start, diff]
 
 # train Resnet model on full CIFAR-100 data with random initialization and Adam optimizer
-random_init = train_to_threshold(title='resnet-adam-cifar100', dataset='cifar100', train_threshold=0.99,
+random_init = train_model_threshold(title='resnet-adam-cifar100', dataset='cifar100', train_threshold=0.99,
                                             optimizer_name='adam', model_name='resnet18')
 
 # train on half CIFAR-100 data
-_ = train_to_threshold(title='resnet-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
+_ = train_model_threshold(title='resnet-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
                        optimizer_name='adam', model_name='resnet18', use_half_data=True)
 
 # train Resnet model on full CIFAR-100 data with warm-starting and Adam optimizer
-warm_start = train_to_threshold(title='resnet-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
+warm_start = train_model_threshold(title='resnet-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
                                 optimizer_name='adam', model_name='resnet18', 
                                 checkpoint='experiments/exp2/resnet-adam-cifar100/resnet18-adam.pt')
 
@@ -824,28 +889,28 @@ warm_start = train_to_threshold(title='resnet-adam-cifar100', dataset='cifar100'
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['resnet-adam-cifar100'] = [random_init, warm_start, diff]
+overall_results['resnet-adam-cifar100'] = [random_init, warm_start, diff]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-We repeat all the previous for the CIFAR-100 dataset using the MLP model with different optimizers.
+We repeat all the previous for the **CIFAR-100** dataset using the **MLP** model with different optimizers.
 :::
 
 ::: {.cell .code}
 ``` python
 # train MLP model on full CIFAR-100 data with random initialization and SGD optimizer
-random_init = train_to_threshold(title='mlp-sgd-cifar100', dataset='cifar100', train_threshold=0.99,
+random_init = train_model_threshold(title='mlp-sgd-cifar100', dataset='cifar100', train_threshold=0.99,
                                              optimizer_name='sgd', model_name='mlp')
 
 # train on half CIFAR-100 data
-_ = train_to_threshold(title='mlp-sgd-cifar100', dataset='cifar100', train_threshold=0.99,
+_ = train_model_threshold(title='mlp-sgd-cifar100', dataset='cifar100', train_threshold=0.99,
                        optimizer_name='sgd', model_name='mlp', use_half_data=True)
 
 # train MLP model on full CIFAR-100 data with warm-starting and SGD optimizer
-warm_start = train_to_threshold(title='mlp-sgd-cifar100', dataset='cifar100', train_threshold=0.99, 
+warm_start = train_model_threshold(title='mlp-sgd-cifar100', dataset='cifar100', train_threshold=0.99, 
                                 optimizer_name='sgd', model_name='mlp', 
                                 checkpoint='experiments/exp2/mlp-sgd-cifar100/mlp-sgd.pt')
 
@@ -853,18 +918,18 @@ warm_start = train_to_threshold(title='mlp-sgd-cifar100', dataset='cifar100', tr
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['mlp-sgd-cifar100'] = [random_init, warm_start, diff]
+overall_results['mlp-sgd-cifar100'] = [random_init, warm_start, diff]
 
 # train MLP model on full CIFAR-100 data with random initialization and Adam optimizer
-random_init = train_to_threshold(title='mlp-adam-cifar100', dataset='cifar100',train_threshold=0.99,
+random_init = train_model_threshold(title='mlp-adam-cifar100', dataset='cifar100',train_threshold=0.99,
                                               optimizer_name='adam', model_name='mlp')
 
 # train on half CIFAR-100 data
-_ = train_to_threshold(title='mlp-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
+_ = train_model_threshold(title='mlp-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
                        optimizer_name='adam', model_name='mlp', use_half_data=True)
 
 # train MLP model on full CIFAR-100 data with warm-starting and Adam optimizer
-warm_start = train_to_threshold(title='mlp-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
+warm_start = train_model_threshold(title='mlp-adam-cifar100', dataset='cifar100', train_threshold=0.99, 
                                 optimizer_name='adam', model_name='mlp', 
                                 checkpoint='experiments/exp2/mlp-adam-cifar100/mlp-adam.pt')
 
@@ -872,28 +937,28 @@ warm_start = train_to_threshold(title='mlp-adam-cifar100', dataset='cifar100', t
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['mlp-adam-cifar100'] = [random_init, warm_start, diff]
+overall_results['mlp-adam-cifar100'] = [random_init, warm_start, diff]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-We create the previous for the SVHN dataset using the ResNet model with different optimizers.
+We create the previous for the **SVHN** dataset using the **ResNet** model with different optimizers.
 :::
 
 ::: {.cell .code}
 ``` python
 # train ResNet model on full SVHN data with random initialization and SGD optimizer
-random_init = train_to_threshold(title='resnet-sgd-svhn', dataset='svhn', train_threshold=0.99,
+random_init = train_model_threshold(title='resnet-sgd-svhn', dataset='svhn', train_threshold=0.99,
                                        optimizer_name='sgd', model_name='resnet18')
 
 # train on half SVHN data
-_ = train_to_threshold(title='resnet-sgd-svhn', dataset='svhn', train_threshold=0.99, 
+_ = train_model_threshold(title='resnet-sgd-svhn', dataset='svhn', train_threshold=0.99, 
                        optimizer_name='sgd', model_name='resnet18', use_half_data=True)
 
 # train ResNet model on full SVHN data with warm-starting and SGD optimizer
-warm_start = train_to_threshold(title='resnet-sgd-svhn', dataset='svhn', train_threshold=0.99, 
+warm_start = train_model_threshold(title='resnet-sgd-svhn', dataset='svhn', train_threshold=0.99, 
                                 optimizer_name='sgd', model_name='resnet18',
                                 checkpoint='experiments/exp2/resnet-sgd-svhn/resnet18-sgd.pt')
 
@@ -901,18 +966,18 @@ warm_start = train_to_threshold(title='resnet-sgd-svhn', dataset='svhn', train_t
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['resnet-sgd-svhn'] = [random_init, warm_start, diff]
+overall_results['resnet-sgd-svhn'] = [random_init, warm_start, diff]
 
 # train ResNet model on full SVHN data with random initialization and Adam optimizer
-random_init = train_to_threshold(title='resnet-adam-svhn', dataset='svhn', train_threshold=0.99,
+random_init = train_model_threshold(title='resnet-adam-svhn', dataset='svhn', train_threshold=0.99,
                                         optimizer_name='adam', model_name='resnet18')
 
 # train on half SVHN data
-_ = train_to_threshold(title='resnet-adam-svhn', dataset='svhn', train_threshold=0.99, 
+_ = train_model_threshold(title='resnet-adam-svhn', dataset='svhn', train_threshold=0.99, 
                        optimizer_name='adam', model_name='resnet18', use_half_data=True)
 
 # train ResNet model on full SVHN data with warm-starting and Adam optimizer
-warm_start = train_to_threshold(title='resnet-adam-svhn', dataset='svhn', train_threshold=0.99, 
+warm_start = train_model_threshold(title='resnet-adam-svhn', dataset='svhn', train_threshold=0.99, 
                                 optimizer_name='adam', model_name='resnet18', 
                                 checkpoint='experiments/exp2/resnet-adam-svhn/resnet18-adam.pt')
 
@@ -920,28 +985,28 @@ warm_start = train_to_threshold(title='resnet-adam-svhn', dataset='svhn', train_
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['resnet-adam-svhn'] = [random_init, warm_start, diff]
+overall_results['resnet-adam-svhn'] = [random_init, warm_start, diff]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-We create the previous for the SVHN dataset using the MLP model with different optimizers.
+We create the previous for the **SVHN** dataset using the **MLP** model with different optimizers.
 :::
 
 ::: {.cell .code}
 ``` python
 # train MLP model on full SVHN data with random initialization and SGD optimizer
-random_init = train_to_threshold(title='mlp-sgd-svhn', dataset='svhn', train_threshold=0.99,
+random_init = train_model_threshold(title='mlp-sgd-svhn', dataset='svhn', train_threshold=0.99,
                                              optimizer_name='sgd', model_name='mlp')
 
 # train on half SVHN data
-_ = train_to_threshold(title='mlp-sgd-svhn', dataset='svhn', train_threshold=0.99, 
+_ = train_model_threshold(title='mlp-sgd-svhn', dataset='svhn', train_threshold=0.99, 
                        optimizer_name='sgd', model_name='mlp', use_half_data=True)
 
 # train MLP model on full SVHN data with warm-starting and SGD optimizer
-warm_start = train_to_threshold(title='mlp-sgd-svhn', dataset='svhn', train_threshold=0.99, 
+warm_start = train_model_threshold(title='mlp-sgd-svhn', dataset='svhn', train_threshold=0.99, 
                                 optimizer_name='sgd', model_name='mlp',
                                 checkpoint='experiments/exp2/mlp-sgd-svhn/mlp-sgd.pt')
 
@@ -949,18 +1014,18 @@ warm_start = train_to_threshold(title='mlp-sgd-svhn', dataset='svhn', train_thre
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['mlp-sgd-svhn'] = [random_init, warm_start, diff]
+overall_results['mlp-sgd-svhn'] = [random_init, warm_start, diff]
 
 # train MLP model on full SVHN data with random initialization and Adam optimizer
-random_init = train_to_threshold(title='mlp-adam-svhn', dataset='svhn', train_threshold=0.99,
+random_init = train_model_threshold(title='mlp-adam-svhn', dataset='svhn', train_threshold=0.99,
                                               optimizer_name='adam', model_name='mlp')
 
 # train on half SVHN data
-_ = train_to_threshold(title='mlp-adam-svhn', dataset='svhn', train_threshold=0.99, 
+_ = train_model_threshold(title='mlp-adam-svhn', dataset='svhn', train_threshold=0.99, 
                        optimizer_name='adam', model_name='mlp', use_half_data=True)
 
 # train MLP model on full SVHN data with warm-starting and Adam optimizer
-warm_start = train_to_threshold(title='mlp-adam-svhn', dataset='svhn', train_threshold=0.99, 
+warm_start = train_model_threshold(title='mlp-adam-svhn', dataset='svhn', train_threshold=0.99, 
                                 optimizer_name='adam', model_name='mlp',
                                 checkpoint='experiments/exp2/mlp-adam-svhn/mlp-adam.pt')
 
@@ -968,21 +1033,21 @@ warm_start = train_to_threshold(title='mlp-adam-svhn', dataset='svhn', train_thr
 diff = random_init - warm_start
 
 # Store the results in the dictionary
-overal_result['mlp-adam-svhn'] = [random_init, warm_start, diff]
+overall_results['mlp-adam-svhn'] = [random_init, warm_start, diff]
 ```
 :::
 
 ::: {.cell .markdown}
 ***
 
-We save all the previous results in the `overal_result` dictionary and save it in `overal_result.json` to be loaded for table creation.
+We save all the previous results in the `overall_results` dictionary and save it in `overall_results.json` to be loaded for table creation.
 :::
 
 ::: {.cell .code}
 ``` python
 # Save the outputs in a json file
-with open("experiments/exp2/overal_result.json", "w") as f:
-    json.dump(overal_result, f)
+with open("experiments/exp2/overall_results.json", "w") as f:
+    json.dump(overall_results, f)
 ```
 :::
 
@@ -995,11 +1060,11 @@ The table is created in the next cell so we can compare our results with the tab
 ::: {.cell .code}
 ``` python
 # Read from json file
-with open("experiments/exp2/overal_result.json", "r") as f:
-    overal_result = json.load(f)
+with open("experiments/exp2/overall_results.json", "r") as f:
+    overall_results = json.load(f)
 
 # Create a dataframe with the result to be in a table form
-df = pd.DataFrame.from_dict(overal_result).rename(index={0: "Random Init", 1: "Warm Start", 2: "Difference"})
+df = pd.DataFrame.from_dict(overall_results).rename(index={0: "Random Init", 1: "Warm Start", 2: "Difference"})
 
 # Display the dataframe
 display(df.style.set_properties(**{'text-align': 'center', 'border': '1px solid black', 'padding': '5px'}))
@@ -1008,12 +1073,10 @@ display(df.style.set_properties(**{'text-align': 'center', 'border': '1px solid 
 
 ::: {.cell .markdown}
 ***
+**Do the results validate the qualitative claim? Do the numerical values match the ones in the original paper? 🤔**
 
-<p style="color: crimson;font-size: 16px;">Did the experiment description provide all the parameter values or did we make any assumptions? If so, what criteria do you think was used to make those assumptions?</p>
-:::
-
-::: {.cell .markdown}
-<p style="color: green; font-size: 16px;"> Answer: </p>
+**In the parameter table we speicified the parameter values that we used in the experiment. Can you find these values in the paper?  🔍** \
+Hint: one of the parameters is the x-label of one of the figure in the paper, mention the figure number.
 
 ***
 :::
@@ -1022,12 +1085,9 @@ display(df.style.set_properties(**{'text-align': 'center', 'border': '1px solid 
 ### Things to try:
 In this experiment you can:
 
-- Change the learning rate by setting `lr=0.0001` as an argument in the `train_to_threshold` function
+- Change the learning rate by setting `lr=0.0001` as an argument in the `train_model_threshold` function
 - Experiment with different `train_threshold` values and see how they affect the training time and the generalization gap
+- Check the sensitivity of the model to the random seed by changing it
 
 ***
-:::
-
-::: {.cell .markdown}
-If you are using colab click on this link to go to the next notebook: [Open in Colab](https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/notebooks/05-Experiment3.ipynb)
 :::
