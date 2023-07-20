@@ -290,10 +290,10 @@ def train_model_online(init_type='random', lr=0.001, split_size=1000, acc_thresh
 
 Before running the experiment we create a parameter table to store the parameter values from the paper that we will use in the next few cells.
 
-| Model                 | init_type | Learning rate | Optimizer | Training accuracy | split size |
-| :-------------------: | :-------: | :-----------: | :-------: | :---------------: | :--------: |
-| Warm-Starting         |    warm   |     0.001     |    Adam   |       99%         |    1000    |
-| Random initialization |  random   |     0.001     |    Adam   |       99%         |    1000    |
+| Model                 | init_type 🆕 | Learning rate | Optimizer | Training accuracy | split size 🆕 |
+| :-------------------: | :----------: | :-----------: | :-------: | :---------------: | :-----------: |
+| Warm-Starting         |    warm      |     0.001     |    Adam   |       99%         |    1000       |
+| Random initialization |  random      |     0.001     |    Adam   |       99%         |    1000       |
 :::
 
 ::: {.cell .markdown}
@@ -379,7 +379,7 @@ plt.savefig(f"experiments/exp3/cifar10-99.png")
 :::
 
 ::: {.cell .markdown}
-### Things to try:
+### Things to try: 🧪
 In this experiment you can:
 
 - Change the learning rate and observe what effects it have on the experiment.
@@ -391,7 +391,8 @@ In this experiment you can:
 :::
 
 ::: {.cell .markdown}
-**There are more claims in the paper. Identify one of those claims and validate its qualitative and quantitative versions.** \
-Hint: You can find some of the functions that we used helpful. 
-For example you can use the MLP class to create a logistic regression model as `logistic = MLP(input_dim, num_classes, hidden_units=[])`
+### There are more claims in the paper. Identify one of those claims and validate its qualitative and quantitative versions! 🧐
+Hint: You can find some of the functions that we used helpful. At least one claim doesn't need any new functions to run.
+If you want to try another experiment where you need a logistic regression model, you can use the MLP class to create a logistic regression model:  
+`logistic = MLP(input_dim, num_classes, hidden_units=[])`
 :::

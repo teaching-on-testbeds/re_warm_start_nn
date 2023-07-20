@@ -286,11 +286,11 @@ def train_model_threshold(title='warm', lr=0.001, checkpoint=None, use_half_data
 ***
 Before running the experiment we create a parameter table for to store the parameter values from the paper that we will use in the upcoming cells.
 
-| Dataset   | Model           | Optimizer  | Learning rate | Train threshold |
-| :-------: | :-------------: | :--------: | :-----------: | :-------------: |
-| CIFAR-10  | ResNet-18 / MLP | SGD / Adam |  0.0001       |  99%            |
-| CIFAR-100 | ResNet-18 / MLP | SGD / Adam |  0.0001       |  99%            |
-| SVHN      | ResNet-18 / MLP | SGD / Adam |  0.0001       |  99%            |
+| Dataset 🆕 | Model 🆕        | Optimizer 🆕 | Learning rate | Train threshold 🆕 |
+| :--------: | :-------------: | :----------: | :-----------: | :----------------: |
+| CIFAR-10   | ResNet-18 / MLP | SGD / Adam   |  0.0001       |  99%               |
+| CIFAR-100  | ResNet-18 / MLP | SGD / Adam   |  0.0001       |  99%               |
+| SVHN       | ResNet-18 / MLP | SGD / Adam   |  0.0001       |  99%               |
 
 We will extend our functions as we go to run the whole experiment. For now, they support **CIFAR-10**, **SGD** and **ResNet-18**.
 :::
@@ -1082,7 +1082,7 @@ Hint: one of the parameters is the x-label of one of the figure in the paper, me
 :::
 
 ::: {.cell .markdown}
-### Things to try:
+### Things to try: 🧪
 In this experiment you can:
 
 - Change the learning rate by setting `lr=0.0001` as an argument in the `train_model_threshold` function
