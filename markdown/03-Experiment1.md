@@ -395,7 +395,7 @@ plt.savefig("experiments/exp1/fig1_test.png")
 :::
 
 ::: {.cell .markdown}
-### Things to try:
+### Things to try: 🧪
 This experiment uses a specific model and optimizer. Exploring different combinations might be beneficial but costly in terms of computation. A simple way to further examine the first claim is:
 
 - Use a lower learning rate since the model achieves 99% training accuracy quickly
