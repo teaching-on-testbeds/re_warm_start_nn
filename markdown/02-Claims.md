@@ -17,7 +17,7 @@ The claim states that a model initialized with the weights of the old model that
 
 The authors support their claim by comparing the test accuracy of two models trained with the two initialization strategies for **350** epochs each. The difference in generalization between the warm-starting model and the randomly initialized model that the authors trained is provided in the figure below.
 
-![](assets/claim1.png) 
+![](assets/claim1.png) \
 *Figure 1 from the original paper where model trained on half the data is represented by blue line from 0 to 350 epochs. Warm-starting is the blue line from 350-700 model while Random initialized model is the orange line.*
 
 We will conduct an experiment that compares the two initialization strategies using the **CIFAR-10** dataset and a **ResNet-18** model. The warm-starting model is first trained on half of the data for **350** epochs, then both models are trained on the full data for another **350** epochs. We verify the overall qualitative claim by measuring the generalization gap between the warm-starting and the randomly initialized model.
