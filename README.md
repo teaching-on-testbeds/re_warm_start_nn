@@ -49,8 +49,8 @@ conda install --yes --file requirements.txt
 To run the notebook, you can clone this repository and launch Jupyter notebook from the project directory:
 
 ```
-git clone https://github.com/mohammed183/ml-reproducibility-p1.git
-cd ml-reproducibility-p1
+git clone https://github.com/mohammed183/re_warm_start_nn.git
+cd re_warm_start_nn
 make
 jupyter notebook
 ```

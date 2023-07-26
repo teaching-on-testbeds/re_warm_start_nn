@@ -1,7 +1,7 @@
 ::: {.cell .markdown}
 # Primary Claims 📝:
 
-The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to understand the corresponding experiment. Intuitively, warm-starting should be faster and more effective than cold-starting, since it leverages the previous knowledge of the model. However, the paper shows that warm-starting often leads to worse generalization performance than cold-starting, even though the final training losses are similar.
+The original paper makes several claims that can be classified as either quantitative or qualitative. Read the following claims carefully to be able to understand the corresponding experiment. Intuitively, warm-starting should be faster and more effective than cold-starting, since it leverages the previous knowledge of the model. However, the paper shows that warm-starting often leads to worse generalization performance than cold-starting, even though the final training losses are similar. 
 
 The paper conducts several comprehensive experiments to compare the performance of warm-starting and cold-starting, demonstrating the trade-off between generalization and training time. They also vary the models, optimizers, and datasets used in the experiments to validate their findings.
 

@@ -1,5 +1,5 @@
 ::: {.cell .markdown}
-# On Warm-Starting Neural Network Training
+# On Warm-Starting Neural Network Training 
 
 The paper is available on [arXiv](https://arxiv.org/abs/1910.08475). In creating the interactive material for this notebook, we utilized the code from this reproducibility challenge: [Re: Warm-Starting Neural Network Training](https://rescience.github.io/bibliography/Kireev_2021.html).
 

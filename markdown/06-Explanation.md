@@ -7,7 +7,7 @@ In this section we will compare the results obtained from running the previous e
 ::: {.cell .markdown}
 ## Experiment 1
 
-In this experiment we trained two ResNet-18 models on CIFAR-10 dataset for 350 epochs using SGD optimizer. One model was warm-started with a model trained on half the data, and the other was randomly initialized.
+In this experiment we trained two **ResNet-18** models on **CIFAR-10** dataset for **350** epochs using **SGD** optimizer. One model was warm-started with a model trained on half the data, and the other was randomly initialized.
 :::
 
 ::: {.cell .markdown}

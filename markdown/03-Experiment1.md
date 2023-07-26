@@ -1,7 +1,7 @@
 ::: {.cell .markdown}
 # Experiments
 
-In this section, we will evaluate the claims made by the authors. You should already know the general steps for each experiment from the previous section. We will now implement these experiments following the author description of each experiment and try to identify what was clear and what was vague due to incomplete information from the authors.
+In this section, we will evaluate the claims made by the authors. You should already know the general steps for each experiment from the previous section. We will now implement these experiments following the author description of each experiment and try to identify what was clear and what was vague due to incomplete information from the authors. 
 
 ***
 :::

@@ -2,9 +2,9 @@
 ## Experiment 3:
 In this experiment we test the claim *"Warm-starting neural networks saves resources and time, but lowers test accuracy compared to random initialized models"*. We train the model with two initialization and expect to see less training time and less test accuracy for the warm-starting model.
 
-We conduct an experiment to compare the effects of random initialization and warm-starting on online training, which is a common scenario in real time setting. We divide the **CIFAR-10** dataset into splits of 1000 samples each, and train a **ResNet18** model on each split until it reaches *99% training accuracy*. We incrementally add more splits to the training data until we exhaust the whole dataset. We record the training time and test accuracy for each split and analyze the differences between the two initialization methods.
+We conduct an experiment to compare the effects of random initialization and warm-starting on online training, which is a common scenario in real time setting. We divide the **CIFAR-10** dataset into splits of 1000 samples each, and train a **ResNet18** model on each split until it reaches *99% training accuracy*. We incrementally add more splits to the training data until we exhaust the whole dataset. We record the training time and test accuracy for each split and analyze the differences between the two initialization methods. 
 
-We reuse some components from the previous experiment as the **ResNet18** model from torchvision and the **Adam** optimizer from `torch.optim`, with cross entropy loss as the loss function.
+We reuse some components from the previous experiment as the **ResNet18** model from torchvision and the **Adam** optimizer from `torch.optim`, with **cross entropy loss** as the loss function.
 ::: 
 
 ::: {.cell .markdown}
