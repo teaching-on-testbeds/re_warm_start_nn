@@ -57,7 +57,7 @@ jupyter notebook
 
 Then, open the notebook file `Start_Here.ipynb` in the notebooks folder and follow the instructions.
 
-Alternatively, you can use Google Colab to run the notebook online without installing anything. Just click on this link: <a target="_blank" href="https://colab.research.google.com/github/mohammed183/ml-reproducibility-p1/blob/main/Start_Here.ipynb">
+Alternatively, you can use Google Colab to run the notebook online without installing anything. Just click on this link: <a target="_blank" href="https://colab.research.google.com/github/mohammed183/re_warm_start_nn/blob/main/Start_Here.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
