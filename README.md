@@ -51,9 +51,20 @@ $ jupyter notebook
 
 4. In Jupyter Notebook, open the `Start_Here.ipynb` file located in the `notebooks` folder and follow the instructions.
 
+
 ### Option 2: Run on Chameleon Cloud
 
-You can run the notebook on Chameleon Cloud using either a Colab frontend or a Jupyter Lab frontend. Both options are available in the `Reserve.ipynb` notebook. Follow the steps in that notebook to reserve an instance on Chameleon Cloud and run it with your desired frontend.
+You can run the notebook on Chameleon Cloud using either a Colab frontend or a Jupyter Lab frontend. To do this, follow these steps:
+
+1. Clone the repository on the Jupyter interface for Chameleon Cloud by running the following command:
+```
+$ git clone https://github.com/mohammed183/re_warm_start_nn.git && cd re_warm_start_nn
+```
+
+2. Open the `Reserve.ipynb` notebook, which is available in the `re_warm_start_nn` directory.
+
+3. Follow the steps in the `Reserve.ipynb` notebook to reserve an instance on Chameleon Cloud and run it with your desired frontend.
+
 
 ### Option 3: Run on Google Colab
 
