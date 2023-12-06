@@ -1,8 +1,8 @@
 # [Re] Warm-Starting Neural Network Training
 
-This project is part of the [UCSC OSPO](https://ospo.ucsc.edu/) summer of reproducibility fellowship and aims to create an interactive notebook that can be used to teach undergraduate or graduate students different levels of reproducibility in machine learning education.
+This project was implemented by [Mohamed Saeed](https://github.com/mohammed183) as part of the [UCSC OSPO](https://ospo.ucsc.edu/) Summer of Reproducibility 2023, and aims to create an interactive notebook that can be used to teach undergraduate or graduate students about reproducibility in machine learning.
 
-The project is based on the paper "[On Warm-Starting Neural Network Training](https://arxiv.org/abs/1910.08475)" by Jordan T. Ash and Ryan P. Adams, which was successfully replicated and published on [ReScience C](https://rescience.github.io/bibliography/Kireev_2021.html).
+In this project, we consider the paper "[On Warm-Starting Neural Network Training](https://arxiv.org/abs/1910.08475)" by Jordan T. Ash and Ryan P. Adams, which was successfully replicated by others as part of the ML Reproducibility Challenge. The replication is published in [ReScience C](https://rescience.github.io/bibliography/Kireev_2021.html).
 
 The paper investigates the problem of training neural networks on incremental data and shows that warm-starting, i.e., initializing the network with the weights from the previous training on a subset of the data, often leads to worse generalization performance than random initialization, even though the training losses are similar. The paper proposes a simple trick to overcome this problem, which involves shrinking and perturbing the weights before retraining. The paper demonstrates that this trick can close the generalization gap and reduce the training time in several scenarios.
 
@@ -35,8 +35,9 @@ There are three options for installing and running the notebook:
 To run the notebook locally on your device, you'll need to install Python and Jupyter Notebook. Once you have those installed, follow these steps:
 
 1. Clone the repository and navigate to the `re_warm_start_nn` directory by running the following command:
+
 ```
-$ git clone https://github.com/mohammed183/re_warm_start_nn.git && cd re_warm_start_nn
+$ git clone https://github.com/teaching-on-testbeds/re_warm_start_nn.git && cd re_warm_start_nn
 ```
 
 2. Install the required packages by running this command:
@@ -58,7 +59,7 @@ You can run the notebook on Chameleon Cloud using either a Colab frontend or a J
 
 1. Clone the repository on the Jupyter interface for Chameleon Cloud by running the following command:
 ```
-$ git clone https://github.com/mohammed183/re_warm_start_nn.git && cd re_warm_start_nn
+$ cd work && git clone https://github.com/teaching-on-testbeds/re_warm_start_nn.git && cd re_warm_start_nn
 ```
 
 2. Open the `Reserve.ipynb` notebook, which is available in the `re_warm_start_nn` directory.
@@ -68,7 +69,7 @@ $ git clone https://github.com/mohammed183/re_warm_start_nn.git && cd re_warm_st
 
 ### Option 3: Run on Google Colab
 
-You can also run the notebook on Google Colab. To open the `Start_Here.ipynb` file on Colab and navigate through the notebooks, click this button:<a target="_blank" href="https://colab.research.google.com/github/mohammed183/re_warm_start_nn/blob/main/Start_Here.ipynb">
+You can also run the notebook on Google Colab. To open the `Start_Here.ipynb` file on Colab and navigate through the notebooks, click this button:<a target="_blank" href="https://colab.research.google.com/github/teaching-on-testbeds/re_warm_start_nn/blob/main/Start_Here.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
